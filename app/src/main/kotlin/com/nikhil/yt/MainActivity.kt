@@ -559,7 +559,7 @@ class MainActivity : ComponentActivity() {
                     },
                     text = {
                         Column {
-                            Text(text = "A new version of Melo is available. Please update to get the latest features.")
+                            Text(text = "A new version of Mnova is available. Please update to get the latest features.")
                             if (update.changelog.isNotBlank()) {
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text(text = "Changelog:", fontWeight = FontWeight.Bold)
@@ -1251,7 +1251,7 @@ class MainActivity : ComponentActivity() {
                                                         // app icon
                                                         Image(
                                                             painter = painterResource(id = R.drawable.app_icon_small),
-                                                            contentDescription = "Melo Logo",
+                                                            contentDescription = "Mnova Logo",
                                                             modifier = Modifier
                                                                 .size(35.dp)
                                                                 .padding(end = 6.dp)

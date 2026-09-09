@@ -95,7 +95,7 @@ fun AboutScreen(
                 ) {
                     // Title
                     Text(
-                        text = "MELO",
+                        text = "MNOVA",
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
@@ -145,10 +145,10 @@ fun AboutScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 AboutItemCard(
-                    iconUrl = "https://github.com/BurhanHamidDar.png",
-                    title = "Burhan Hamid Dar",
-                    subtitle = "Developer & Modifier",
-                    onClick = { uriHandler.openUri("https://github.com/BurhanHamidDar") }
+                    iconUrl = "https://github.com/snogdox.png",
+                    title = "Momin Manzoor Bhat",
+                    subtitle = "App Developer",
+                    onClick = { uriHandler.openUri("https://github.com/snogdox") }
                 )
                 Spacer(Modifier.height(24.dp))
             }
@@ -197,14 +197,6 @@ fun AboutScreen(
                     title = "Follow me on Instagram",
                     subtitle = "@i.jubito",
                     onClick = { uriHandler.openUri("https://www.instagram.com/i.jubito")}
-                )
-                Spacer(Modifier.height(8.dp))
-
-                AboutItemCard(
-                    iconRes = R.drawable.instagram,
-                    title = "Burhan on Instagram",
-                    subtitle = "@let_me_code__",
-                    onClick = { uriHandler.openUri("https://www.instagram.com/let_me_code__")}
                 )
                 Spacer(Modifier.height(24.dp))
 
@@ -334,7 +326,7 @@ fun AboutItemCard(
     }
 }
 fun launchUpiPayment(context: android.content.Context, upiId: String, payeeName: String) {
-    val note = "Support for Melo"
+    val note = "Support for Mnova"
     val uriString = "upi://pay?pa=$upiId&pn=${android.net.Uri.encode(payeeName)}&tn=${android.net.Uri.encode(note)}&cu=INR"
     val uri = android.net.Uri.parse(uriString)
     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
@@ -381,7 +373,7 @@ fun SupportDeveloperCard(modifier: Modifier = Modifier) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "If you enjoy Melo, consider buying me a chai!",
+                    text = "If you enjoy Mnova, consider buying me a chai!",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
