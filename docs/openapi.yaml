@@ -1,0 +1,418 @@
+openapi: 3.1.0
+info:
+  title: Melo V2 REST API
+  description: Official backend API specification for Melo V2 Android music application and Next.js Admin Dashboard.
+  version: 2.0.0
+servers:
+  - url: http://localhost:8080/v1
+    description: Local development server
+  - url: https://api.melo-app.com/v1
+    description: Production API server
+
+paths:
+  /health:
+    get:
+      summary: Liveness health check
+      responses:
+        '200':
+          description: Service is healthy
+
+  /ready:
+    get:
+      summary: Readiness probe checking database connectivity
+      responses:
+        '200':
+          description: Dependencies are ready
+        '503':
+          description: Database unreachable
+
+  /app/update:
+    get:
+      summary: Check for application releases
+      parameters:
+        - name: channel
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [stable, beta]
+            default: stable
+        - name: version_code
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Latest release metadata including sha256 checksum
+
+  /announcements:
+    get:
+      summary: Fetch active broadcast announcements
+      responses:
+        '200':
+          description: List of active announcements
+
+  /me/username/check:
+    post:
+      summary: Check if a chosen username is available
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              properties:
+                username:
+                  type: string
+      responses:
+        '200':
+          description: Availability result
+
+  /me:
+    get:
+      summary: Get current authenticated user profile
+      security:
+        - FirebaseAuth: []
+      responses:
+        '200':
+          description: Current user profile
+        '401':
+          description: Unauthorized
+    patch:
+      summary: Update user profile
+      security:
+        - FirebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name:
+                  type: string
+                bio:
+                  type: string
+                username:
+                  type: string
+                profile_visibility:
+                  type: string
+                  enum: [private, public]
+      responses:
+        '200':
+          description: Updated profile
+
+  /sync/push:
+    post:
+      summary: Push idempotent local changes to cloud sync ledger
+      security:
+        - FirebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mutations]
+              properties:
+                mutations:
+                  type: array
+                  items:
+                    type: object
+                    required: [client_mutation_id, entity_type, entity_id, operation, payload]
+                    properties:
+                      client_mutation_id:
+                        type: string
+                        format: uuid
+                      entity_type:
+                        type: string
+                      entity_id:
+                        type: string
+                        format: uuid
+                      operation:
+                        type: string
+                        enum: [insert, update, delete]
+                      payload:
+                        type: object
+      responses:
+        '200':
+          description: Mutations acknowledged and server cursor returned
+
+  /sync/pull:
+    get:
+      summary: Pull changes since server cursor
+      security:
+        - FirebaseAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: List of mutations since cursor
+
+  /uploads/presign:
+    post:
+      summary: Create short-lived Cloudflare R2 presigned PUT upload URL
+      security:
+        - FirebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [asset_type, content_type, byte_size]
+              properties:
+                asset_type:
+                  type: string
+                  enum: [avatar, playlist_cover, announcement_banner, admin_asset]
+                content_type:
+                  type: string
+                  enum: [image/jpeg, image/png, image/webp]
+                byte_size:
+                  type: integer
+      responses:
+        '200':
+          description: Presigned upload URL and metadata
+
+  /uploads/complete:
+    post:
+      summary: Verify uploaded object and activate media asset
+      security:
+        - FirebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [asset_id]
+              properties:
+                asset_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Asset activated with public CDN URL
+
+  /admin/overview:
+    get:
+      summary: Dashboard overview statistics
+      security:
+        - FirebaseAuth: []
+      responses:
+        '200':
+          description: Real aggregated system metrics
+
+  /admin/users:
+    get:
+      summary: Search and paginate registered users
+      security:
+        - FirebaseAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated user records
+
+  /admin/releases:
+    post:
+      summary: Create and publish a new app release
+      security:
+        - FirebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version_code, version_name, sha256]
+              properties:
+                channel:
+                  type: string
+                  enum: [stable, beta]
+                version_code:
+                  type: integer
+                version_name:
+                  type: string
+                min_supported_version_code:
+                  type: integer
+                download_url:
+                  type: string
+                sha256:
+                  type: string
+                signing_cert_sha256:
+                  type: string
+                file_size_bytes:
+                  type: integer
+                release_notes:
+                  type: string
+                rollout_percentage:
+                  type: integer
+      responses:
+        '201':
+          description: Release created
+
+  /playlists:
+    post:
+      summary: Create a new playlist
+      security:
+        - FirebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                visibility:
+                  type: string
+                  enum: [private, unlisted, public]
+                is_collaborative:
+                  type: boolean
+      responses:
+        '201':
+          description: Playlist created
+
+  /playlists/{id}:
+    get:
+      summary: Get playlist details and tracks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Playlist details and track listing
+    patch:
+      summary: Update playlist metadata
+      security:
+        - FirebaseAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Playlist updated
+    delete:
+      summary: Delete playlist
+      security:
+        - FirebaseAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Playlist deleted
+
+  /community/playlists:
+    get:
+      summary: Browse approved public playlists
+      responses:
+        '200':
+          description: Public community playlists
+
+  /community/reports:
+    post:
+      summary: Submit a moderation report
+      security:
+        - FirebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_type, reason]
+              properties:
+                target_type:
+                  type: string
+                  enum: [profile, playlist, announcement, other]
+                target_id:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+                details:
+                  type: string
+      responses:
+        '201':
+          description: Report queued for moderation
+
+  /admin/reports:
+    get:
+      summary: List moderation queue reports
+      security:
+        - FirebaseAuth: []
+      responses:
+        '200':
+          description: Reports list
+
+  /admin/reports/{id}:
+    patch:
+      summary: Update report moderation status
+      security:
+        - FirebaseAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [open, reviewing, resolved, dismissed]
+                resolution_note:
+                  type: string
+      responses:
+        '200':
+          description: Report status updated
+
+components:
+  securitySchemes:
+    FirebaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase ID Token issued by Firebase Authentication SDK.

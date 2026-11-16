@@ -40,3 +40,16 @@ captures/
 *.properties
 !gradle.properties
 !**/resources.properties
+.env
+.env*
+!.env.example
+!.env.local.example
+*firebase*.json
+google-services.json
+node_modules/
+.next/
+dist/
+api.exe
+
+**/.cxx/
+/app/.cxx
