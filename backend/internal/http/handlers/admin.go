@@ -185,7 +185,7 @@ func (h *AdminHandler) CreateRelease(w http.ResponseWriter, r *http.Request) {
 		rel.Platform = "android"
 	}
 	if rel.PackageName == "" {
-		rel.PackageName = "com.sarwar.melo"
+		rel.PackageName = "com.music.melo"
 	}
 	if rel.Status == "" {
 		rel.Status = "draft"

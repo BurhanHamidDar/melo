@@ -489,6 +489,7 @@ class MainActivity : ComponentActivity() {
         val context = LocalContext.current
 
         LaunchedEffect(Unit) {
+            com.mochyy.mochymusic.core.updater.MeloUpdateManager.checkForUpdate(context)
             if (getAutoUpdateCheckSetting(context)) {
 
                 delay(2000L)
@@ -1717,6 +1718,29 @@ private const val UpdateSnoozeWindowMillis = 24L * 60L * 60L * 1000L
 
 @Composable
 private fun HomeUpdatePrompt(currentRoute: String?) {
+    val meloUpdate by com.mochyy.mochymusic.core.updater.MeloUpdateManager.updateState.collectAsState()
+    val meloDismissedThisSession by com.mochyy.mochymusic.core.updater.MeloUpdateManager.dismissedThisSession.collectAsState()
+
+    // 1. Mandatory Update: completely blocks the app everywhere until updated
+    if (meloUpdate != null && meloUpdate!!.isMandatory) {
+        com.mochyy.mochymusic.ui.screens.update.MeloUpdateScreen(
+            release = meloUpdate!!,
+            onDismiss = {},
+        )
+        return
+    }
+
+    // 2. Optional Update: shows on Home, skippable for this session, but reminds on every app open
+    if (meloUpdate != null && !meloDismissedThisSession && currentRoute == Screens.Home.route) {
+        com.mochyy.mochymusic.ui.screens.update.MeloUpdateScreen(
+            release = meloUpdate!!,
+            onDismiss = {
+                com.mochyy.mochymusic.core.updater.MeloUpdateManager.dismissForThisSession()
+            },
+        )
+        return
+    }
+
     if (currentRoute != Screens.Home.route) return
     val (noticeHidden) = rememberPreference(com.mochyy.mochymusic.constants.HideUpdateNoticeKey, defaultValue = false)
     if (noticeHidden) return

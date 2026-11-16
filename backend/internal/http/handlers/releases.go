@@ -70,7 +70,7 @@ func (h *ReleaseHandler) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hasUpdate := release.VersionCode > clientVersionCode
-	isMandatory := clientVersionCode > 0 && clientVersionCode < release.MinSupportedVersionCode
+	isMandatory := (clientVersionCode > 0 && clientVersionCode < release.MinSupportedVersionCode) || release.Mandatory
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"has_update":   hasUpdate,
