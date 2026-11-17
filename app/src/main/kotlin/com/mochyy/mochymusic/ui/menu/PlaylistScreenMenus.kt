@@ -127,11 +127,30 @@ fun LocalPlaylistMenu(
                 onClick = onEdit,
                 modifier = Modifier.weight(1f),
             )
-            resync.title?.let { title ->
+            if (resync.title != null) {
                 SheetActionCard(
                     icon = R.drawable.sync,
-                    title = title,
+                    title = resync.title!!,
                     onClick = resync::start,
+                    modifier = Modifier.weight(1f),
+                )
+            } else if (playlist.playlist.isEditable) {
+                var isCloudSynced by remember(playlist.playlist.isAutoSync) { mutableStateOf(playlist.playlist.isAutoSync) }
+                val scope = rememberCoroutineScope()
+                SheetActionCard(
+                    icon = if (isCloudSynced) R.drawable.sync else R.drawable.cloud,
+                    title = if (isCloudSynced) "Cloud Synced" else "Sync to Cloud",
+                    onClick = {
+                        val target = !isCloudSynced
+                        isCloudSynced = target
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            val syncManager = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                context.applicationContext,
+                                com.mochyy.mochymusic.di.MeloSyncEntryPoint::class.java
+                            ).syncManager()
+                            syncManager.setPlaylistSync(playlist.id, target)
+                        }
+                    },
                     modifier = Modifier.weight(1f),
                 )
             }

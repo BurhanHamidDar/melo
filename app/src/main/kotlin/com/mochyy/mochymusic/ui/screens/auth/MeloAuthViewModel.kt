@@ -38,7 +38,7 @@ class MeloAuthViewModel @Inject constructor(
         val res = authRepo.signInWithEmail(email, pass)
         if (res.isSuccess) {
             _currentUser.value = res.getOrNull()
-            syncManager.syncNow()
+            syncManager.syncNow(forceFullPull = true)
         }
         return res
     }
@@ -47,7 +47,7 @@ class MeloAuthViewModel @Inject constructor(
         val res = authRepo.signUpWithEmail(email, pass, name)
         if (res.isSuccess) {
             _currentUser.value = res.getOrNull()
-            syncManager.syncNow()
+            syncManager.syncNow(forceFullPull = true)
         }
         return res
     }
@@ -56,7 +56,7 @@ class MeloAuthViewModel @Inject constructor(
         val res = authRepo.signInWithGoogle(idToken)
         if (res.isSuccess) {
             _currentUser.value = res.getOrNull()
-            syncManager.syncNow()
+            syncManager.syncNow(forceFullPull = true)
         }
         return res
     }
@@ -64,6 +64,7 @@ class MeloAuthViewModel @Inject constructor(
     fun signOut() {
         authRepo.signOut()
         _currentUser.value = null
+        syncManager.resetSyncCursor()
     }
 
     suspend fun triggerSync() {

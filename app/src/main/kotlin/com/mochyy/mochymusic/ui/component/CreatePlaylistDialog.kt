@@ -119,8 +119,17 @@ fun CreatePlaylistDialog(
                                     isEditable = true,
                                     thumbnailUrl = cover,
                                     description = form.description.trim().ifBlank { null },
+                                    isAutoSync = true,
                                 )
                                 database.query { insert(playlist) }
+
+                                runCatching {
+                                    val syncManager = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                        appContext,
+                                        com.mochyy.mochymusic.di.MeloSyncEntryPoint::class.java
+                                    ).syncManager()
+                                    syncManager.syncNow()
+                                }
 
                                 withContext(Dispatchers.Main) {
                                     currentOnCreated?.invoke(playlistId)

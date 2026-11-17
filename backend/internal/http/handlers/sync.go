@@ -44,11 +44,15 @@ func (h *SyncHandler) Push(w http.ResponseWriter, r *http.Request) {
 		defer func() { _ = tx.Rollback(r.Context()) }()
 
 		for _, m := range req.Mutations {
-			// Idempotent insertion into sync_mutations
+			// Idempotent insertion/update into sync_mutations
 			query := `
 				INSERT INTO sync_mutations (user_id, client_mutation_id, entity_type, entity_id, operation, payload)
 				VALUES ($1, $2, $3, $4, $5, $6)
-				ON CONFLICT (user_id, client_mutation_id) DO NOTHING
+				ON CONFLICT (user_id, client_mutation_id) DO UPDATE SET 
+					entity_type = EXCLUDED.entity_type,
+					entity_id = EXCLUDED.entity_id,
+					operation = EXCLUDED.operation,
+					payload = EXCLUDED.payload
 				RETURNING id
 			`
 			var mutationID int64

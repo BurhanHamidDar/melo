@@ -1,7 +1,6 @@
 package com.mochyy.mochymusic.core.sync
 
 import android.content.Context
-import com.mochyy.mochymusic.BuildConfig
 import com.mochyy.mochymusic.core.auth.MeloAuthRepository
 import com.mochyy.mochymusic.core.updater.MeloUpdateManager
 import com.mochyy.mochymusic.db.MusicDatabase
@@ -17,6 +16,7 @@ import timber.log.Timber
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
+import java.time.LocalDateTime
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
@@ -26,6 +26,11 @@ import javax.inject.Singleton
 /**
  * MeloSyncManager provides idempotent, local-first library and account synchronization
  * with the Melo Go backend and Neon PostgreSQL database.
+ *
+ * Ensures:
+ * 1. Playlists marked with isAutoSync are fully backed up to the cloud with all ordered tracks.
+ * 2. When a user logs in on another device, their playlists and tracks are fetched and restored into Room.
+ * 3. Fast offline operation: playback and local changes are never blocked.
  */
 @Singleton
 class MeloSyncManager @Inject constructor(
@@ -48,7 +53,35 @@ class MeloSyncManager @Inject constructor(
         }
     }
 
-    suspend fun syncNow(): Result<Unit> = withContext(Dispatchers.IO) {
+    /**
+     * Enable or disable cloud sync for a specific playlist.
+     */
+    suspend fun setPlaylistSync(playlistId: String, enable: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val db = database.openHelper.writableDatabase
+            db.execSQL(
+                "UPDATE playlist SET isAutoSync = ? WHERE id = ?",
+                arrayOf<Any>(if (enable) 1 else 0, playlistId)
+            )
+            if (enable) {
+                syncNow()
+            }
+            Unit
+        }
+    }
+
+    /**
+     * Clear stored sync cursor (e.g. on account sign out).
+     */
+    fun resetSyncCursor() {
+        prefs.edit().remove("sync_cursor").remove("last_sync_time").apply()
+        _syncStatus.value = "Guest mode — local only"
+    }
+
+    /**
+     * Run a bidirectional sync pass with the Melo backend.
+     */
+    suspend fun syncNow(forceFullPull: Boolean = false): Result<Unit> = withContext(Dispatchers.IO) {
         val user = authRepo.getCurrentUser()
         if (user == null) {
             _syncStatus.value = "Guest mode — local only"
@@ -94,12 +127,13 @@ class MeloSyncManager @Inject constructor(
                 }
             }
 
+            val readableDb = database.openHelper.readableDatabase
+
             // 2. Gather local liked songs & playlists to push
             val mutations = JSONArray()
 
-            // Collect liked songs from local Room database
-            val db = database.openHelper.readableDatabase
-            db.query("SELECT id, title, liked FROM song WHERE liked = 1 LIMIT 200").use { cursor ->
+            // Collect liked songs
+            readableDb.query("SELECT id, title, liked FROM song WHERE liked = 1 LIMIT 200").use { cursor ->
                 val idIdx = cursor.getColumnIndex("id")
                 val titleIdx = cursor.getColumnIndex("title")
                 while (cursor.moveToNext()) {
@@ -124,20 +158,72 @@ class MeloSyncManager @Inject constructor(
                 }
             }
 
-            // Collect user playlists
-            db.query("SELECT id, name FROM playlist LIMIT 50").use { cursor ->
+            // Collect playlists marked for sync (isAutoSync = 1) or user editable playlists
+            val playlistQuery = "SELECT id, name, description, thumbnailUrl, isAutoSync FROM playlist WHERE isEditable = 1 LIMIT 100"
+            readableDb.query(playlistQuery).use { cursor ->
                 val idIdx = cursor.getColumnIndex("id")
                 val nameIdx = cursor.getColumnIndex("name")
+                val descIdx = cursor.getColumnIndex("description")
+                val thumbIdx = cursor.getColumnIndex("thumbnailUrl")
+                val syncIdx = cursor.getColumnIndex("isAutoSync")
+
                 while (cursor.moveToNext()) {
                     val playlistId = if (idIdx >= 0) cursor.getString(idIdx) else ""
                     val name = if (nameIdx >= 0) cursor.getString(nameIdx) else ""
-                    if (playlistId.isNotBlank()) {
+                    val desc = if (descIdx >= 0) cursor.getString(descIdx) else ""
+                    val thumb = if (thumbIdx >= 0) cursor.getString(thumbIdx) else ""
+                    val isAutoSync = if (syncIdx >= 0) cursor.getInt(syncIdx) == 1 else false
+
+                    // Sync playlists where isAutoSync is enabled
+                    if (playlistId.isNotBlank() && isAutoSync) {
+                        // Collect all tracks in this playlist
+                        val tracks = JSONArray()
+                        val songQuery = """
+                            SELECT psm.songId, psm.position, s.title, s.duration, s.thumbnailUrl, s.albumName
+                            FROM playlist_song_map psm
+                            JOIN song s ON psm.songId = s.id
+                            WHERE psm.playlistId = ?
+                            ORDER BY psm.position ASC
+                        """.trimIndent()
+
+                        readableDb.query(songQuery, arrayOf(playlistId)).use { songCursor ->
+                            val sIdIdx = songCursor.getColumnIndex("songId")
+                            val posIdx = songCursor.getColumnIndex("position")
+                            val tIdx = songCursor.getColumnIndex("title")
+                            val durIdx = songCursor.getColumnIndex("duration")
+                            val thIdx = songCursor.getColumnIndex("thumbnailUrl")
+                            val albIdx = songCursor.getColumnIndex("albumName")
+
+                            while (songCursor.moveToNext()) {
+                                val sId = if (sIdIdx >= 0) songCursor.getString(sIdIdx) else ""
+                                val pos = if (posIdx >= 0) songCursor.getInt(posIdx) else 0
+                                val title = if (tIdx >= 0) songCursor.getString(tIdx) else ""
+                                val dur = if (durIdx >= 0) songCursor.getInt(durIdx) else -1
+                                val sThumb = if (thIdx >= 0) songCursor.getString(thIdx) else ""
+                                val alb = if (albIdx >= 0) songCursor.getString(albIdx) else ""
+
+                                tracks.put(JSONObject().apply {
+                                    put("song_id", sId)
+                                    put("position", pos)
+                                    put("title", title)
+                                    put("duration", dur)
+                                    put("thumbnail_url", sThumb)
+                                    put("album_name", alb)
+                                })
+                            }
+                        }
+
                         val clientMutationId = UUID.nameUUIDFromBytes("playlist:$playlistId".toByteArray()).toString()
                         val entityId = UUID.nameUUIDFromBytes(playlistId.toByteArray()).toString()
                         val payload = JSONObject().apply {
                             put("playlist_id", playlistId)
                             put("name", name)
+                            put("description", desc)
+                            put("thumbnail_url", thumb)
+                            put("is_auto_sync", true)
+                            put("tracks", tracks)
                         }
+
                         mutations.put(JSONObject().apply {
                             put("client_mutation_id", clientMutationId)
                             put("entity_type", "playlist")
@@ -154,8 +240,8 @@ class MeloSyncManager @Inject constructor(
                 val pushEndpoint = "$workingBaseUrl/v1/sync/push"
                 val pushConn = (URL(pushEndpoint).openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
-                    connectTimeout = 5_000
-                    readTimeout = 5_000
+                    connectTimeout = 6_000
+                    readTimeout = 6_000
                     doOutput = true
                     setRequestProperty("Authorization", "Bearer $token")
                     setRequestProperty("Content-Type", "application/json")
@@ -173,18 +259,20 @@ class MeloSyncManager @Inject constructor(
                         if (cursor > 0) {
                             prefs.edit().putLong("sync_cursor", cursor).apply()
                         }
+                    } else {
+                        Timber.w("Sync push returned code $code")
                     }
                 } finally {
                     pushConn.disconnect()
                 }
             }
 
-            // 4. Pull any incoming remote changes from backend /v1/sync/pull
-            val currentCursor = prefs.getLong("sync_cursor", 0L)
-            val pullEndpoint = "$workingBaseUrl/v1/sync/pull?cursor=$currentCursor&limit=50"
+            // 4. Pull remote changes from backend /v1/sync/pull
+            val currentCursor = if (forceFullPull) 0L else prefs.getLong("sync_cursor", 0L)
+            val pullEndpoint = "$workingBaseUrl/v1/sync/pull?cursor=$currentCursor&limit=100"
             val pullConn = (URL(pullEndpoint).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 5_000
-                readTimeout = 5_000
+                connectTimeout = 6_000
+                readTimeout = 6_000
                 setRequestProperty("Authorization", "Bearer $token")
                 setRequestProperty("Accept", "application/json")
             }
@@ -195,7 +283,110 @@ class MeloSyncManager @Inject constructor(
                     val respStr = pullConn.inputStream.bufferedReader().use { it.readText() }
                     val respJson = JSONObject(respStr)
                     val nextCursor = respJson.optLong("next_cursor", currentCursor)
-                    prefs.edit().putLong("sync_cursor", nextCursor).apply()
+                    val mutationsArr = respJson.optJSONArray("mutations")
+
+                    if (mutationsArr != null && mutationsArr.length() > 0) {
+                        val writableDb = database.openHelper.writableDatabase
+                        val nowStr = LocalDateTime.now().toString()
+
+                        for (i in 0 until mutationsArr.length()) {
+                            val m = mutationsArr.getJSONObject(i)
+                            val entityType = m.optString("entity_type")
+                            val payload = m.optJSONObject("payload") ?: continue
+
+                            when (entityType) {
+                                "playlist" -> {
+                                    val playlistId = payload.optString("playlist_id")
+                                    val name = payload.optString("name")
+                                    val desc = payload.optString("description")
+                                    val thumb = payload.optString("thumbnail_url")
+                                    val tracks = payload.optJSONArray("tracks")
+
+                                    if (playlistId.isNotBlank() && name.isNotBlank()) {
+                                        writableDb.execSQL(
+                                            """
+                                            INSERT INTO playlist (id, name, description, thumbnailUrl, isAutoSync, isEditable, isLocal, createdAt, lastUpdateTime)
+                                            VALUES (?, ?, ?, ?, 1, 1, 0, ?, ?)
+                                            ON CONFLICT(id) DO UPDATE SET
+                                                name = excluded.name,
+                                                description = excluded.description,
+                                                thumbnailUrl = COALESCE(excluded.thumbnailUrl, playlist.thumbnailUrl),
+                                                isAutoSync = 1
+                                            """.trimIndent(),
+                                            arrayOf<Any?>(
+                                                playlistId,
+                                                name,
+                                                desc.ifBlank { null },
+                                                thumb.ifBlank { null },
+                                                nowStr,
+                                                nowStr
+                                            )
+                                        )
+
+                                        if (tracks != null && tracks.length() > 0) {
+                                            writableDb.execSQL("DELETE FROM playlist_song_map WHERE playlistId = ?", arrayOf<Any>(playlistId))
+                                            for (t in 0 until tracks.length()) {
+                                                val track = tracks.getJSONObject(t)
+                                                val songId = track.optString("song_id")
+                                                val songTitle = track.optString("title")
+                                                val duration = track.optInt("duration", -1)
+                                                val songThumb = track.optString("thumbnail_url")
+                                                val albumName = track.optString("album_name")
+                                                val position = track.optInt("position", t)
+
+                                                if (songId.isNotBlank()) {
+                                                    writableDb.execSQL(
+                                                        """
+                                                        INSERT INTO song (id, title, duration, thumbnailUrl, albumName, inLibrary)
+                                                        VALUES (?, ?, ?, ?, ?, ?)
+                                                        ON CONFLICT(id) DO UPDATE SET
+                                                            title = excluded.title,
+                                                            thumbnailUrl = COALESCE(excluded.thumbnailUrl, song.thumbnailUrl)
+                                                        """.trimIndent(),
+                                                        arrayOf<Any?>(
+                                                            songId,
+                                                            songTitle,
+                                                            duration,
+                                                            songThumb.ifBlank { null },
+                                                            albumName.ifBlank { null },
+                                                            nowStr
+                                                        )
+                                                    )
+
+                                                    writableDb.execSQL(
+                                                        """
+                                                        INSERT INTO playlist_song_map (playlistId, songId, position)
+                                                        VALUES (?, ?, ?)
+                                                        """.trimIndent(),
+                                                        arrayOf<Any>(playlistId, songId, position)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                "library_item", "liked_song" -> {
+                                    val songId = payload.optString("song_id")
+                                    val title = payload.optString("title")
+                                    val isLiked = payload.optBoolean("is_liked", true)
+                                    if (songId.isNotBlank()) {
+                                        writableDb.execSQL(
+                                            """
+                                            INSERT INTO song (id, title, liked)
+                                            VALUES (?, ?, ?)
+                                            ON CONFLICT(id) DO UPDATE SET liked = excluded.liked
+                                            """.trimIndent(),
+                                            arrayOf<Any>(songId, title, if (isLiked) 1 else 0)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (nextCursor > 0) {
+                        prefs.edit().putLong("sync_cursor", nextCursor).apply()
+                    }
                 }
             } finally {
                 pullConn.disconnect()

@@ -420,6 +420,41 @@ fun PlaylistMenu(
                             )
                         )
                     }
+                    if (editable && autoPlaylist != true) {
+                        val isCloudSynced = dbPlaylist?.playlist?.isAutoSync ?: playlist.playlist.isAutoSync
+                        add(
+                            Material3MenuItemData(
+                                title = {
+                                    Text(
+                                        text = if (isCloudSynced) "Synced to Melo Cloud" else "Sync to Melo Cloud"
+                                    )
+                                },
+                                description = {
+                                    Text(
+                                        text = if (isCloudSynced) "Playlist is backed up and synced" else "Sync playlist across your devices"
+                                    )
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(if (isCloudSynced) R.drawable.sync else R.drawable.cloud),
+                                        contentDescription = null,
+                                        tint = if (isCloudSynced) Color(0xFF30D158) else LocalContentColor.current,
+                                    )
+                                },
+                                onClick = {
+                                    val target = !isCloudSynced
+                                    coroutineScope.launch(Dispatchers.IO) {
+                                        val syncManager = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                            context.applicationContext,
+                                            com.mochyy.mochymusic.di.MeloSyncEntryPoint::class.java
+                                        ).syncManager()
+                                        syncManager.setPlaylistSync(playlist.id, target)
+                                    }
+                                    onDismiss()
+                                }
+                            )
+                        )
+                    }
                     add(
                         Material3MenuItemData(
                             title = {
