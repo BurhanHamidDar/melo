@@ -28,7 +28,18 @@ data class MeloReleaseInfo(
 
 object MeloUpdateManager {
     // Configurable backend API base URL
-    var backendApiBaseUrl = "https://api.melo.app"
+    var backendApiBaseUrl = if (BuildConfig.DEBUG) "http://10.0.2.2:8080" else "https://api.melo.app"
+
+    val candidateBaseUrls: List<String> = if (BuildConfig.DEBUG) {
+        listOf(
+            "http://10.0.2.2:8080",
+            "http://192.168.31.36:8080",
+            "http://127.0.0.1:8080",
+            "https://api.melo.app"
+        )
+    } else {
+        listOf("https://api.melo.app")
+    }
 
     private val _updateState = MutableStateFlow<MeloReleaseInfo?>(null)
     val updateState: StateFlow<MeloReleaseInfo?> = _updateState.asStateFlow()
@@ -51,56 +62,66 @@ object MeloUpdateManager {
                 val currentVersionCode = BuildConfig.VERSION_CODE.toLong()
                 val channel = updateChannel(context).name.lowercase()
 
-                val endpoint = "$backendApiBaseUrl/api/v1/releases/latest?version_code=$currentVersionCode&channel=$channel"
-                val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 8_000
-                    readTimeout = 8_000
-                    setRequestProperty("Accept", "application/json")
-                    setRequestProperty("User-Agent", "Melo-Android/${BuildConfig.VERSION_NAME}")
-                }
+                for (base in candidateBaseUrls) {
+                    val endpoint = "$base/api/v1/releases/latest?version_code=$currentVersionCode&channel=$channel"
+                    val conn = runCatching {
+                        (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                            connectTimeout = 2_500
+                            readTimeout = 2_500
+                            setRequestProperty("Accept", "application/json")
+                            setRequestProperty("User-Agent", "Melo-Android/${BuildConfig.VERSION_NAME}")
+                        }
+                    }.getOrNull() ?: continue
 
-                try {
-                    val code = conn.responseCode
-                    if (code == 200) {
-                        val body = conn.inputStream.bufferedReader().use { it.readText() }
-                        val json = JSONObject(body)
-                        val hasUpdate = json.optBoolean("has_update", false)
-                        val isMandatoryFlag = json.optBoolean("is_mandatory", false)
-                        val relObj = json.optJSONObject("release")
+                    try {
+                        val code = conn.responseCode
+                        if (code == 200) {
+                            backendApiBaseUrl = base
+                            val body = conn.inputStream.bufferedReader().use { it.readText() }
+                            val json = JSONObject(body)
+                            val hasUpdate = json.optBoolean("has_update", false)
+                            val isMandatoryFlag = json.optBoolean("is_mandatory", false)
+                            val relObj = json.optJSONObject("release")
 
-                        if (relObj != null) {
-                            val relVersionCode = relObj.optLong("version_code", 0L)
-                            val relVersionName = relObj.optString("version_name", "")
-                            val minSupported = relObj.optLong("min_supported_version_code", 0L)
-                            val releaseNotes = relObj.optString("release_notes", "A new version of Melo is available.")
-                            val downloadUrl = relObj.optString("download_url", "")
-                            val fileSize = relObj.optLong("file_size_bytes", 0L)
-                            val sha256 = relObj.optString("sha256", "")
-                            val mandatoryFromRel = relObj.optBoolean("mandatory", false)
+                            if (relObj != null) {
+                                val relVersionCode = relObj.optLong("version_code", 0L)
+                                val relVersionName = relObj.optString("version_name", "")
+                                val minSupported = relObj.optLong("min_supported_version_code", 0L)
+                                val releaseNotes = relObj.optString("release_notes", "A new version of Melo is available.")
+                                val downloadUrl = relObj.optString("download_url", "")
+                                val fileSize = relObj.optLong("file_size_bytes", 0L)
+                                val sha256 = relObj.optString("sha256", "")
+                                val mandatoryFromRel = relObj.optBoolean("mandatory", false)
 
-                            val mandatory = isMandatoryFlag || mandatoryFromRel ||
-                                    (currentVersionCode > 0 && currentVersionCode < minSupported)
+                                val mandatory = isMandatoryFlag || mandatoryFromRel ||
+                                        (currentVersionCode > 0 && currentVersionCode < minSupported)
 
-                            val info = MeloReleaseInfo(
-                                versionCode = relVersionCode,
-                                versionName = relVersionName,
-                                minSupportedVersionCode = minSupported,
-                                releaseNotes = releaseNotes,
-                                downloadUrl = downloadUrl,
-                                fileSizeBytes = fileSize,
-                                sha256 = sha256,
-                                isMandatory = mandatory,
-                                hasUpdate = hasUpdate || relVersionCode > currentVersionCode,
-                            )
+                                val info = MeloReleaseInfo(
+                                    versionCode = relVersionCode,
+                                    versionName = relVersionName,
+                                    minSupportedVersionCode = minSupported,
+                                    releaseNotes = releaseNotes,
+                                    downloadUrl = downloadUrl,
+                                    fileSizeBytes = fileSize,
+                                    sha256 = sha256,
+                                    isMandatory = mandatory,
+                                    hasUpdate = hasUpdate || relVersionCode > currentVersionCode,
+                                )
 
-                            if (info.hasUpdate) {
-                                _updateState.value = info
-                                return@runCatching info
+                                if (info.hasUpdate) {
+                                    _updateState.value = info
+                                    return@runCatching info
+                                }
+                                // No update needed from backend
+                                _updateState.value = null
+                                return@runCatching null
                             }
                         }
+                    } catch (_: Exception) {
+                        // try next candidate base URL
+                    } finally {
+                        conn.disconnect()
                     }
-                } finally {
-                    conn.disconnect()
                 }
 
                 // Fallback to GitHub releases if backend is not reachable or has no release

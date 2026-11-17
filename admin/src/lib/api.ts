@@ -121,6 +121,17 @@ export async function createAnnouncement(announcement: Partial<Announcement>): P
   return data.announcement;
 }
 
+export async function sendPushNotification(payload: { title: string; body: string; topic?: string; token?: string }): Promise<void> {
+  const res = await fetchWithAuth('/v1/admin/notifications/send', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Failed to dispatch push notification');
+  }
+}
+
 export async function getAuditLogs(): Promise<{ audit_logs: AuditLog[] }> {
   const res = await fetchWithAuth('/v1/admin/audit-logs');
   if (!res.ok) throw new Error('Failed to load audit logs');

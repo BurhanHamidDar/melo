@@ -135,6 +135,9 @@ func (m *AuthMiddleware) ensureUserExists(ctx context.Context, token *auth.Verif
 }
 
 func (m *AuthMiddleware) checkAdminRole(ctx context.Context, userID uuid.UUID) (string, error) {
+	if m.AuthService != nil && m.AuthService.IsDevMode() {
+		return "super_admin", nil
+	}
 	if m.DB == nil || m.DB.Pool == nil {
 		return "super_admin", nil // Dev fallback
 	}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -33,8 +34,15 @@ func NewService(projectID string, credentialsPath string, appEnv string) (*Servi
 	}
 
 	if credentialsPath != "" {
-		if _, err := os.Stat(credentialsPath); err == nil {
-			slog.Info("initializing Firebase Admin SDK with service account", "path", credentialsPath)
+		resolvedPath := credentialsPath
+		if _, err := os.Stat(resolvedPath); os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join("backend", credentialsPath)); err == nil {
+				resolvedPath = filepath.Join("backend", credentialsPath)
+			}
+		}
+
+		if _, err := os.Stat(resolvedPath); err == nil {
+			slog.Info("initializing Firebase Admin SDK with service account", "path", resolvedPath)
 			// Production / Staging service account initialization
 		} else {
 			slog.Warn("Firebase credentials path specified but file does not exist, using dev mode verifier", "path", credentialsPath)
@@ -44,6 +52,10 @@ func NewService(projectID string, credentialsPath string, appEnv string) (*Servi
 	}
 
 	return s, nil
+}
+
+func (s *Service) IsDevMode() bool {
+	return s.isDevMode
 }
 
 func (s *Service) VerifyIDToken(ctx context.Context, idToken string) (*VerifiedToken, error) {

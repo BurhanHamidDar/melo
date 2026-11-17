@@ -490,6 +490,19 @@ class MainActivity : ComponentActivity() {
 
         LaunchedEffect(Unit) {
             com.mochyy.mochymusic.core.updater.MeloUpdateManager.checkForUpdate(context)
+            try {
+                com.google.firebase.messaging.FirebaseMessaging.getInstance().apply {
+                    subscribeToTopic("announcements")
+                    subscribeToTopic("all")
+                    token.addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            timber.log.Timber.d("Melo FCM Device Token: ${task.result}")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                timber.log.Timber.w(e, "Failed to initialize Firebase Messaging subscription")
+            }
             if (getAutoUpdateCheckSetting(context)) {
 
                 delay(2000L)

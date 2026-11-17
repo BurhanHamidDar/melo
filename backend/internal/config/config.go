@@ -30,7 +30,7 @@ type Config struct {
 }
 
 func loadDotEnv() {
-	paths := []string{".env", "../.env", "../../.env"}
+	paths := []string{".env", "backend/.env", "../.env", "../../.env"}
 	for _, p := range paths {
 		data, err := os.ReadFile(p)
 		if err == nil {

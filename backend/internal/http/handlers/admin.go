@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -9,14 +10,16 @@ import (
 	"github.com/melo-v2/backend/internal/database"
 	"github.com/melo-v2/backend/internal/http/middleware"
 	"github.com/melo-v2/backend/internal/models"
+	"github.com/melo-v2/backend/internal/notifications"
 )
 
 type AdminHandler struct {
-	DB *database.DB
+	DB  *database.DB
+	FCM *notifications.FCMService
 }
 
-func NewAdminHandler(db *database.DB) *AdminHandler {
-	return &AdminHandler{DB: db}
+func NewAdminHandler(db *database.DB, fcm *notifications.FCMService) *AdminHandler {
+	return &AdminHandler{DB: db, FCM: fcm}
 }
 
 func (h *AdminHandler) Overview(w http.ResponseWriter, r *http.Request) {
@@ -163,8 +166,57 @@ func (h *AdminHandler) CreateAnnouncement(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	// Dispatch push notification via FCM if available
+	if h.FCM != nil {
+		go func(title, body string) {
+			_ = h.FCM.Send(context.Background(), notifications.PushMessage{
+				Title: title,
+				Body:  body,
+				Topic: "announcements",
+				Data: map[string]string{
+					"type": "announcement",
+				},
+			})
+		}(a.Title, a.Body)
+	}
+
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
 		"announcement": a,
+	})
+}
+
+func (h *AdminHandler) SendPushNotification(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Title string `json:"title"`
+		Body  string `json:"body"`
+		Topic string `json:"topic"`
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Failed to parse body")
+		return
+	}
+	if req.Title == "" || req.Body == "" {
+		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Title and Body are required")
+		return
+	}
+	if h.FCM == nil {
+		writeError(w, http.StatusServiceUnavailable, "FCM_UNAVAILABLE", "Firebase Cloud Messaging service not configured")
+		return
+	}
+	err := h.FCM.Send(r.Context(), notifications.PushMessage{
+		Title: req.Title,
+		Body:  req.Body,
+		Topic: req.Topic,
+		Token: req.Token,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "FCM_FAILED", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Push notification dispatched successfully via FCM",
 	})
 }
 

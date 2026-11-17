@@ -16,6 +16,7 @@ import (
 	"github.com/melo-v2/backend/internal/database"
 	"github.com/melo-v2/backend/internal/http/handlers"
 	"github.com/melo-v2/backend/internal/http/middleware"
+	"github.com/melo-v2/backend/internal/notifications"
 	"github.com/melo-v2/backend/internal/storage"
 )
 
@@ -55,6 +56,14 @@ func main() {
 		slog.Warn("failed to initialize R2 storage client", "error", err)
 	}
 
+	// Firebase Cloud Messaging
+	fcmService, err := notifications.NewFCMService(cfg.GoogleAppCredentials, cfg.FirebaseProjectID)
+	if err != nil {
+		slog.Warn("FCM service initialization failed (push notifications will be disabled)", "error", err)
+	} else {
+		slog.Info("FCM service initialized successfully")
+	}
+
 	// Handlers
 	healthH := handlers.NewHealthHandler(db)
 	userH := handlers.NewUserHandler(db)
@@ -62,7 +71,7 @@ func main() {
 	releaseH := handlers.NewReleaseHandler(db)
 	announcementH := handlers.NewAnnouncementHandler(db)
 	uploadH := handlers.NewUploadHandler(db, cfg, r2Client)
-	adminH := handlers.NewAdminHandler(db)
+	adminH := handlers.NewAdminHandler(db, fcmService)
 	playlistH := handlers.NewPlaylistHandler(db)
 	communityH := handlers.NewCommunityHandler(db)
 
@@ -73,6 +82,8 @@ func main() {
 	mux.HandleFunc("GET /v1/health", healthH.Health)
 	mux.HandleFunc("GET /v1/ready", healthH.Ready)
 	mux.HandleFunc("GET /v1/app/update", releaseH.CheckUpdate)
+	mux.HandleFunc("GET /v1/releases/latest", releaseH.CheckUpdate)
+	mux.HandleFunc("GET /api/v1/releases/latest", releaseH.CheckUpdate)
 	mux.HandleFunc("GET /v1/announcements", announcementH.ListActive)
 	mux.HandleFunc("POST /v1/me/username/check", userH.CheckUsername)
 
@@ -121,6 +132,7 @@ func main() {
 	mux.HandleFunc("PATCH /v1/admin/reports/{id}", authMiddleware.RequireAdmin("moderator", communityH.UpdateReport))
 	mux.HandleFunc("POST /v1/admin/announcements", authMiddleware.RequireAdmin("content_manager", adminH.CreateAnnouncement))
 	mux.HandleFunc("POST /v1/admin/releases", authMiddleware.RequireAdmin("content_manager", adminH.CreateRelease))
+	mux.HandleFunc("POST /v1/admin/notifications/send", authMiddleware.RequireAdmin("content_manager", adminH.SendPushNotification))
 	mux.HandleFunc("GET /v1/admin/audit-logs", authMiddleware.RequireAdmin("super_admin", adminH.ListAuditLogs))
 
 	// Apply global middleware: CORS and Logging
