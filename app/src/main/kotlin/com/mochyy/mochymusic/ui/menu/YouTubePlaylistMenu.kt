@@ -610,7 +610,7 @@ fun YouTubePlaylistMenu(
                                 val intent = Intent().apply {
                                     action = Intent.ACTION_SEND
                                     type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, playlist.shareLink)
+                                    putExtra(Intent.EXTRA_TEXT, com.mochyy.mochymusic.core.share.MeloShareUrl.playlist(playlist.id))
                                 }
                                 context.startActivity(Intent.createChooser(intent, null))
                                 onDismiss()

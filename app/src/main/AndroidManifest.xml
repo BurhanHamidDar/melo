@@ -185,6 +185,40 @@
                 <data android:scheme="vnd.youtube.launch" />
             </intent-filter>
 
+            <!-- Melo App Links (HTTPS) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="melo-v2.web.app" />
+                <data android:host="melo-v2.firebaseapp.com" />
+                <data android:host="melo.app" />
+                <data android:host="www.melo.app" />
+                <data android:pathPrefix="/track/" />
+                <data android:pathPrefix="/song/" />
+                <data android:pathPrefix="/playlist/" />
+                <data android:pathPrefix="/album/" />
+                <data android:pathPrefix="/artist/" />
+            </intent-filter>
+
+            <!-- Melo Custom URI Scheme (melo://) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="melo" />
+            </intent-filter>
+
             <!-- Share filter -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

@@ -97,8 +97,8 @@ internal data class ShareLyricsLook(
 internal class SongShareSession(val song: MediaMetadata) {
     val share = ShareSong(song.title, song.artists.joinToString { it.name }, song.thumbnailUrl)
 
-    // youtube music by default; a song that only lives on this phone has no link to give
-    val link: String? = if (song.localUri != null || song.id.startsWith("LOCAL_")) null else "https://music.youtube.com/watch?v=${song.id}"
+    // Melo share link by default; a song that only lives on this phone has no link to give
+    val link: String? = if (song.localUri != null || song.id.startsWith("LOCAL_")) null else com.mochyy.mochymusic.core.share.MeloShareUrl.track(song.id)
 
     val durationMs: Long = song.duration.coerceAtLeast(0) * 1000L
 

@@ -1592,6 +1592,60 @@ class MainActivity : ComponentActivity() {
         intent.removeExtra(Intent.EXTRA_TEXT)
         val coroutineScope = lifecycle.coroutineScope
 
+        val isMeloScheme = uri.scheme?.equals("melo", ignoreCase = true) == true
+        val isMeloHost = uri.host?.let { h ->
+            h.contains("melo-v2.web.app", ignoreCase = true) ||
+            h.contains("melo-v2.firebaseapp.com", ignoreCase = true) ||
+            h.contains("melo.app", ignoreCase = true)
+        } == true
+
+        if (isMeloScheme || isMeloHost) {
+            val entityType = when {
+                isMeloScheme && !uri.host.isNullOrEmpty() && uri.host != "open" -> uri.host
+                else -> uri.pathSegments.firstOrNull()
+            }
+            val entityId = when {
+                isMeloScheme && !uri.host.isNullOrEmpty() && uri.host != "open" -> uri.pathSegments.firstOrNull() ?: uri.lastPathSegment
+                else -> uri.pathSegments.getOrNull(1) ?: uri.lastPathSegment
+            }
+
+            if (!entityId.isNullOrBlank()) {
+                when (entityType?.lowercase()) {
+                    "track", "song" -> {
+                        coroutineScope.launch(Dispatchers.IO) {
+                            YouTube.queue(listOf(entityId), null).onSuccess { queue ->
+                                withContext(Dispatchers.Main) {
+                                    playerConnection?.playQueue(
+                                        YouTubeQueue(
+                                            WatchEndpoint(videoId = queue.firstOrNull()?.id ?: entityId, playlistId = null),
+                                            queue.firstOrNull()?.toMediaMetadata()
+                                        )
+                                    )
+                                }
+                            }.onFailure { reportException(it) }
+                        }
+                        return
+                    }
+                    "playlist" -> {
+                        if (entityId.startsWith("LP")) {
+                            navController.navigate("local_playlist/$entityId")
+                        } else {
+                            navController.navigate("online_playlist/$entityId")
+                        }
+                        return
+                    }
+                    "album" -> {
+                        navController.navigate("album/$entityId")
+                        return
+                    }
+                    "artist" -> {
+                        navController.navigate("artist/$entityId")
+                        return
+                    }
+                }
+            }
+        }
+
         when (val path = uri.pathSegments.firstOrNull()) {
             "playlist" -> uri.getQueryParameter("list")?.let { playlistId ->
                 if (playlistId.startsWith("OLAK5uy_")) {

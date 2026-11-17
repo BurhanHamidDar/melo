@@ -476,7 +476,8 @@ fun ArtistScreen(
                                         playerConnection.playQueue(YouTubeQueue(endpoint))
                                     }
                                 }
-                                page?.artist?.shareLink?.let { link ->
+                                val shareUrl = page?.artist?.id?.let { com.mochyy.mochymusic.core.share.MeloShareUrl.artist(it) } ?: page?.artist?.shareLink
+                                shareUrl?.let { link ->
                                     val linkLabel = stringResource(R.string.artist_link_label)
                                     ArtistMenuItem(text = stringResource(R.string.artist_menu_copy_link), icon = R.drawable.link) {
                                         dismiss()

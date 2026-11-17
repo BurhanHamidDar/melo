@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.music.melo",
+      "sha256_cert_fingerprints": [
+        "50:EB:90:BA:D2:41:8D:45:8D:57:52:E7:00:81:36:58:97:44:01:B8:05:16:35:DD:A2:14:B5:9A:56:A0:C4:FB"
+      ]
+    }
+  }
+]

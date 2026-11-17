@@ -41,11 +41,10 @@ data class PlaylistEntity(
         fun generatePlaylistId() = "LP" + RandomStringUtils.insecure().next(8, true, false)
     }
 
-    val shareLink: String?
+    val shareLink: String
         get() {
-            return if (browseId != null)
-                "https://music.youtube.com/playlist?list=$browseId"
-            else null
+            val plId = browseId ?: id
+            return com.mochyy.mochymusic.core.share.MeloShareUrl.playlist(plId)
         }
 
     fun localToggleLike() = copy(

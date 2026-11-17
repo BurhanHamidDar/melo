@@ -273,11 +273,8 @@ fun LocalPlaylistMenu(
                             )
                         },
                         onClick = {
-                            val shareText = if (isYouTubePlaylist) {
-                                "https://music.youtube.com/playlist?list=${playlist.playlist.browseId}"
-                            } else {
-                                songs.joinToString("\n") { it.song.song.title }
-                            }
+                            val playlistId = playlist.playlist.browseId ?: playlist.playlist.id
+                            val shareText = com.mochyy.mochymusic.core.share.MeloShareUrl.playlist(playlistId)
                             val sendIntent: Intent = Intent().apply {
                                 action = Intent.ACTION_SEND
                                 putExtra(Intent.EXTRA_TEXT, shareText)

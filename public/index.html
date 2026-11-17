@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Melo Music • Listen Free</title>
+    <meta property="og:title" content="Listen on Melo Music">
+    <meta property="og:description" content="Free & Open Source Music Streaming">
+    <meta property="og:type" content="music.song">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: #0b0c10; color: #fff; min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; }
+        .card { max-width: 420px; width: 100%; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 32px 24px; backdrop-filter: blur(16px); box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+        .badge { display: inline-block; padding: 6px 14px; border-radius: 999px; background: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 600; font-size: 13px; margin-bottom: 20px; }
+        .artwork { width: 220px; height: 220px; border-radius: 18px; object-fit: cover; margin: 0 auto 20px; display: block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { font-size: 22px; margin-bottom: 8px; font-weight: 700; }
+        p { font-size: 14px; color: #9ca3af; margin-bottom: 24px; }
+        .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; border-radius: 14px; font-weight: 600; text-decoration: none; margin-bottom: 12px; font-size: 15px; }
+        .btn-play { background: linear-gradient(135deg, #10b981, #059669); color: #fff; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3); }
+        .btn-yt { background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255, 255, 255, 0.15); }
+        .btn-dl { color: #9ca3af; font-size: 13px; text-decoration: underline; background: transparent; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="badge">Melo Music</div>
+        <img id="cover" class="artwork" src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400" alt="Melo Track">
+        <h1 id="title">Playing on Melo</h1>
+        <p id="artist">Open to play in Melo app</p>
+        <a id="playBtn" href="#" class="btn btn-play">Play in Melo</a>
+        <a id="ytBtn" href="#" class="btn btn-yt">Listen on YouTube Music</a>
+        <a href="https://github.com/BurhanHamidDar/melo/releases" class="btn btn-dl">Download Melo App</a>
+    </div>
+
+    <script>
+        (function() {
+            var parts = window.location.pathname.split('/').filter(Boolean);
+            var type = parts[0] || 'track';
+            var id = parts[1] || '';
+
+            if (id) {
+                var deepLink = "melo://" + type + "/" + id;
+                var intentLink = "intent://" + type + "/" + id + "#Intent;scheme=melo;package=com.music.melo;end";
+                var ytLink = type === 'playlist' ? ("https://music.youtube.com/playlist?list=" + id) : ("https://music.youtube.com/watch?v=" + id);
+
+                document.getElementById('playBtn').href = intentLink;
+                document.getElementById('ytBtn').href = ytLink;
+                if (type === 'track') {
+                    document.getElementById('cover').src = "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg";
+                }
+
+                // Auto launch if mobile
+                if (/Android/i.test(navigator.userAgent)) {
+                    setTimeout(function() {
+                        window.location.href = intentLink;
+                    }, 200);
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -361,7 +361,7 @@ fun AlbumMenu(
                                 val intent = Intent().apply {
                                     action = Intent.ACTION_SEND
                                     type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/playlist?list=$listId")
+                                    putExtra(Intent.EXTRA_TEXT, com.mochyy.mochymusic.core.share.MeloShareUrl.album(listId))
                                 }
                                 context.startActivity(Intent.createChooser(intent, null))
                             }

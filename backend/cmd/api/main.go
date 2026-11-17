@@ -74,11 +74,19 @@ func main() {
 	adminH := handlers.NewAdminHandler(db, fcmService)
 	playlistH := handlers.NewPlaylistHandler(db)
 	communityH := handlers.NewCommunityHandler(db)
+	shareH := handlers.NewShareHandler(db)
 
 	// Routing with standard Go 1.22+ mux pattern matching
 	mux := http.NewServeMux()
 
 	// Public routes
+	mux.HandleFunc("GET /.well-known/assetlinks.json", shareH.AssetLinks)
+	mux.HandleFunc("GET /track/{id}", shareH.TrackShare)
+	mux.HandleFunc("GET /song/{id}", shareH.TrackShare)
+	mux.HandleFunc("GET /playlist/{id}", shareH.PlaylistShare)
+	mux.HandleFunc("GET /album/{id}", shareH.AlbumShare)
+	mux.HandleFunc("GET /artist/{id}", shareH.ArtistShare)
+
 	mux.HandleFunc("GET /v1/health", healthH.Health)
 	mux.HandleFunc("GET /v1/ready", healthH.Ready)
 	mux.HandleFunc("GET /v1/app/update", releaseH.CheckUpdate)
