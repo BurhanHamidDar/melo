@@ -161,7 +161,7 @@ extensions.configure<ApplicationExtension> {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
             storePassword = "android"
-            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storeFile = file("persistent-debug.keystore").takeIf { it.exists() } ?: file("${System.getProperty("user.home")}/.android/debug.keystore")
         }
     }
 

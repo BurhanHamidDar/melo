@@ -112,14 +112,21 @@ fun MeloLoginScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    val webClientId = "522961269977-4868df4ujusqae79lj55pg2icdek2srh.apps.googleusercontent.com"
-    val gso = remember {
+    val webClientId = remember(context) {
+        try {
+            val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+            if (resId != 0) context.getString(resId) else "522961269977-4868df4ujusqae79lj55pg2icdek2srh.apps.googleusercontent.com"
+        } catch (_: Exception) {
+            "522961269977-4868df4ujusqae79lj55pg2icdek2srh.apps.googleusercontent.com"
+        }
+    }
+    val gso = remember(webClientId) {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(webClientId)
             .requestEmail()
             .build()
     }
-    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
+    val googleSignInClient = remember(gso) { GoogleSignIn.getClient(context, gso) }
 
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -150,7 +157,13 @@ fun MeloLoginScreen(
             }
         } catch (e: ApiException) {
             if (e.statusCode != 12501) { // 12501 = user canceled
-                errorMessage = "Google sign-in error (${e.statusCode}): ${e.localizedMessage}"
+                val detail = when (e.statusCode) {
+                    10 -> "Developer Error (10): The SHA-1 fingerprint (EA:44:9F:DC:...) must be added to your Firebase Console under Project Settings -> Your apps."
+                    7 -> "Network error (7): Please check your internet connection."
+                    12500 -> "Sign in failed (12500): Check Google Play Services and Firebase configuration."
+                    else -> "Google sign-in error (${e.statusCode}): ${e.localizedMessage ?: e.message}"
+                }
+                errorMessage = detail
             }
         } catch (e: Exception) {
             errorMessage = e.localizedMessage ?: "Google sign-in failed."
@@ -380,7 +393,9 @@ fun MeloLoginScreen(
                 GoogleSignInPillButton(
                     onClick = {
                         errorMessage = null
-                        googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                        googleSignInClient.signOut().addOnCompleteListener {
+                            googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                        }
                         onGoogleSignInClick()
                     },
                 )
