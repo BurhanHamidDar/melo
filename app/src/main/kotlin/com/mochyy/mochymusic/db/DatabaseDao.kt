@@ -1530,6 +1530,9 @@ interface DatabaseDao {
     @Query("SELECT * FROM artist WHERE id = :id LIMIT 1")
     fun getArtistById(id: String): ArtistEntity?
 
+    @Query("SELECT * FROM song WHERE id = :songId LIMIT 1")
+    fun songEntity(songId: String): SongEntity?
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(song: SongEntity): Long
 
@@ -2039,6 +2042,9 @@ interface DatabaseDao {
 
     @Upsert
     fun upsert(song: SongEntity)
+
+    @Upsert
+    fun upsert(playlist: PlaylistEntity)
 
     @Delete
     fun delete(song: SongEntity)

@@ -4,6 +4,9 @@ import android.content.Context
 import com.mochyy.mochymusic.core.auth.MeloAuthRepository
 import com.mochyy.mochymusic.core.updater.MeloUpdateManager
 import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.PlaylistEntity
+import com.mochyy.mochymusic.db.entities.PlaylistSongMap
+import com.mochyy.mochymusic.db.entities.SongEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -330,9 +333,6 @@ class MeloSyncManager @Inject constructor(
                     val mutationsArr = respJson.optJSONArray("mutations")
 
                     if (mutationsArr != null && mutationsArr.length() > 0) {
-                        val writableDb = database.openHelper.writableDatabase
-                        val nowMillis = System.currentTimeMillis()
-
                         for (i in 0 until mutationsArr.length()) {
                             val m = mutationsArr.getJSONObject(i)
                             val entityType = m.optString("entity_type")
@@ -344,8 +344,11 @@ class MeloSyncManager @Inject constructor(
                                     val playlistId = payload.optString("playlist_id").ifBlank { m.optString("entity_id") }
                                     if (operation == "delete") {
                                         if (playlistId.isNotBlank()) {
-                                            writableDb.execSQL("DELETE FROM playlist WHERE id = ?", arrayOf<Any>(playlistId))
-                                            writableDb.execSQL("DELETE FROM playlist_song_map WHERE playlistId = ?", arrayOf<Any>(playlistId))
+                                            val existing = database.playlistEntity(playlistId)
+                                            if (existing != null) {
+                                                database.delete(existing)
+                                            }
+                                            database.clearPlaylist(playlistId)
                                         }
                                         continue
                                     }
@@ -356,30 +359,23 @@ class MeloSyncManager @Inject constructor(
                                     val tracks = payload.optJSONArray("tracks")
 
                                     if (playlistId.isNotBlank() && name.isNotBlank()) {
-                                        writableDb.execSQL(
-                                            """
-                                            INSERT INTO playlist (id, name, description, thumbnailUrl, isAutoSync, isEditable, isLocal, createdAt, lastUpdateTime, bookmarkedAt)
-                                            VALUES (?, ?, ?, ?, 1, 1, 0, ?, ?, ?)
-                                            ON CONFLICT(id) DO UPDATE SET
-                                                name = excluded.name,
-                                                description = excluded.description,
-                                                thumbnailUrl = COALESCE(excluded.thumbnailUrl, playlist.thumbnailUrl),
-                                                isAutoSync = 1,
-                                                bookmarkedAt = COALESCE(playlist.bookmarkedAt, excluded.bookmarkedAt)
-                                            """.trimIndent(),
-                                            arrayOf<Any?>(
-                                                playlistId,
-                                                name,
-                                                desc.ifBlank { null },
-                                                thumb.ifBlank { null },
-                                                nowMillis,
-                                                nowMillis,
-                                                nowMillis
-                                            )
+                                        val existingPlaylist = database.playlistEntity(playlistId)
+                                        val playlist = PlaylistEntity(
+                                            id = playlistId,
+                                            name = name,
+                                            description = desc.ifBlank { existingPlaylist?.description },
+                                            thumbnailUrl = thumb.ifBlank { existingPlaylist?.thumbnailUrl },
+                                            isAutoSync = true,
+                                            isEditable = true,
+                                            isLocal = false,
+                                            bookmarkedAt = existingPlaylist?.bookmarkedAt ?: LocalDateTime.now(),
+                                            createdAt = existingPlaylist?.createdAt ?: LocalDateTime.now(),
+                                            lastUpdateTime = LocalDateTime.now(),
                                         )
+                                        database.upsert(playlist)
 
                                         if (tracks != null) {
-                                            writableDb.execSQL("DELETE FROM playlist_song_map WHERE playlistId = ?", arrayOf<Any>(playlistId))
+                                            database.clearPlaylist(playlistId)
                                             for (t in 0 until tracks.length()) {
                                                 val track = tracks.getJSONObject(t)
                                                 val songId = track.optString("song_id")
@@ -390,30 +386,26 @@ class MeloSyncManager @Inject constructor(
                                                 val position = track.optInt("position", t)
 
                                                 if (songId.isNotBlank()) {
-                                                    writableDb.execSQL(
-                                                        """
-                                                        INSERT INTO song (id, title, duration, thumbnailUrl, albumName, inLibrary)
-                                                        VALUES (?, ?, ?, ?, ?, ?)
-                                                        ON CONFLICT(id) DO UPDATE SET
-                                                            title = excluded.title,
-                                                            thumbnailUrl = COALESCE(excluded.thumbnailUrl, song.thumbnailUrl)
-                                                        """.trimIndent(),
-                                                        arrayOf<Any?>(
-                                                            songId,
-                                                            songTitle,
-                                                            duration,
-                                                            songThumb.ifBlank { null },
-                                                            albumName.ifBlank { null },
-                                                            nowMillis
-                                                        )
+                                                    val existingSong = database.songEntity(songId)
+                                                    val song = SongEntity(
+                                                        id = songId,
+                                                        title = songTitle,
+                                                        duration = duration,
+                                                        thumbnailUrl = songThumb.ifBlank { existingSong?.thumbnailUrl },
+                                                        albumName = albumName.ifBlank { existingSong?.albumName },
+                                                        liked = existingSong?.liked ?: false,
+                                                        likedDate = existingSong?.likedDate,
+                                                        totalPlayTime = existingSong?.totalPlayTime ?: 0,
+                                                        inLibrary = existingSong?.inLibrary ?: LocalDateTime.now(),
                                                     )
+                                                    database.upsert(song)
 
-                                                    writableDb.execSQL(
-                                                        """
-                                                        INSERT INTO playlist_song_map (playlistId, songId, position)
-                                                        VALUES (?, ?, ?)
-                                                        """.trimIndent(),
-                                                        arrayOf<Any>(playlistId, songId, position)
+                                                    database.insert(
+                                                        PlaylistSongMap(
+                                                            playlistId = playlistId,
+                                                            songId = songId,
+                                                            position = position,
+                                                        )
                                                     )
                                                 }
                                             }
@@ -425,22 +417,19 @@ class MeloSyncManager @Inject constructor(
                                     val title = payload.optString("title")
                                     val isLiked = payload.optBoolean("is_liked", true)
                                     if (songId.isNotBlank()) {
-                                        writableDb.execSQL(
-                                            """
-                                            INSERT INTO song (id, title, liked, likedDate, inLibrary)
-                                            VALUES (?, ?, ?, ?, ?)
-                                            ON CONFLICT(id) DO UPDATE SET 
-                                                liked = excluded.liked,
-                                                likedDate = excluded.likedDate
-                                            """.trimIndent(),
-                                            arrayOf<Any?>(
-                                                songId,
-                                                title,
-                                                if (isLiked) 1 else 0,
-                                                if (isLiked) nowMillis else null,
-                                                nowMillis
-                                            )
+                                        val existingSong = database.songEntity(songId)
+                                        val song = SongEntity(
+                                            id = songId,
+                                            title = title.ifBlank { existingSong?.title ?: "Liked Song" },
+                                            duration = existingSong?.duration ?: -1,
+                                            thumbnailUrl = existingSong?.thumbnailUrl,
+                                            albumName = existingSong?.albumName,
+                                            liked = isLiked,
+                                            likedDate = if (isLiked) (existingSong?.likedDate ?: LocalDateTime.now()) else null,
+                                            totalPlayTime = existingSong?.totalPlayTime ?: 0,
+                                            inLibrary = existingSong?.inLibrary ?: LocalDateTime.now(),
                                         )
+                                        database.upsert(song)
                                     }
                                 }
                             }
