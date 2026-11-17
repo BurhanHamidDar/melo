@@ -63,9 +63,47 @@ class MeloSyncManager @Inject constructor(
                 "UPDATE playlist SET isAutoSync = ? WHERE id = ?",
                 arrayOf<Any>(if (enable) 1 else 0, playlistId)
             )
+            database.invalidationTracker.refreshVersionsAsync()
             if (enable) {
                 syncNow()
             }
+            Unit
+        }
+    }
+
+    /**
+     * Delete playlist from cloud sync ledger.
+     */
+    suspend fun deleteCloudPlaylist(playlistId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val user = authRepo.getCurrentUser() ?: return@withContext Result.success(Unit)
+        val token = authRepo.getIdToken(forceRefresh = false) ?: return@withContext Result.success(Unit)
+        runCatching {
+            val workingBaseUrl = MeloUpdateManager.backendApiBaseUrl
+            val clientMutationId = UUID.nameUUIDFromBytes("delete_playlist:$playlistId:${System.currentTimeMillis()}".toByteArray()).toString()
+            val entityId = UUID.nameUUIDFromBytes(playlistId.toByteArray()).toString()
+            val mutations = JSONArray().apply {
+                put(JSONObject().apply {
+                    put("client_mutation_id", clientMutationId)
+                    put("entity_type", "playlist")
+                    put("entity_id", entityId)
+                    put("operation", "delete")
+                    put("payload", JSONObject().put("playlist_id", playlistId))
+                })
+            }
+            val pushEndpoint = "$workingBaseUrl/v1/sync/push"
+            val pushConn = (URL(pushEndpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 5_000
+                readTimeout = 5_000
+                doOutput = true
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Accept", "application/json")
+            }
+            val body = JSONObject().put("mutations", mutations).toString()
+            pushConn.outputStream.bufferedWriter().use { it.write(body) }
+            pushConn.responseCode
+            pushConn.disconnect()
             Unit
         }
     }
@@ -181,7 +219,7 @@ class MeloSyncManager @Inject constructor(
                         val songQuery = """
                             SELECT psm.songId, psm.position, s.title, s.duration, s.thumbnailUrl, s.albumName
                             FROM playlist_song_map psm
-                            JOIN song s ON psm.songId = s.id
+                            LEFT JOIN song s ON psm.songId = s.id
                             WHERE psm.playlistId = ?
                             ORDER BY psm.position ASC
                         """.trimIndent()
@@ -197,15 +235,15 @@ class MeloSyncManager @Inject constructor(
                             while (songCursor.moveToNext()) {
                                 val sId = if (sIdIdx >= 0) songCursor.getString(sIdIdx) else ""
                                 val pos = if (posIdx >= 0) songCursor.getInt(posIdx) else 0
-                                val title = if (tIdx >= 0) songCursor.getString(tIdx) else ""
+                                val title = if (tIdx >= 0) songCursor.getString(tIdx).orEmpty() else ""
                                 val dur = if (durIdx >= 0) songCursor.getInt(durIdx) else -1
-                                val sThumb = if (thIdx >= 0) songCursor.getString(thIdx) else ""
-                                val alb = if (albIdx >= 0) songCursor.getString(albIdx) else ""
+                                val sThumb = if (thIdx >= 0) songCursor.getString(thIdx).orEmpty() else ""
+                                val alb = if (albIdx >= 0) songCursor.getString(albIdx).orEmpty() else ""
 
                                 tracks.put(JSONObject().apply {
                                     put("song_id", sId)
                                     put("position", pos)
-                                    put("title", title)
+                                    put("title", title.ifBlank { "Track ${pos + 1}" })
                                     put("duration", dur)
                                     put("thumbnail_url", sThumb)
                                     put("album_name", alb)
@@ -213,7 +251,13 @@ class MeloSyncManager @Inject constructor(
                             }
                         }
 
-                        val clientMutationId = UUID.nameUUIDFromBytes("playlist:$playlistId".toByteArray()).toString()
+                        val trackSig = StringBuilder()
+                        for (idx in 0 until tracks.length()) {
+                            val t = tracks.getJSONObject(idx)
+                            trackSig.append(t.optString("song_id")).append(':').append(t.optInt("position")).append(',')
+                        }
+                        val contentSignature = "$playlistId:$name:$desc:${tracks.length()}:$trackSig"
+                        val clientMutationId = UUID.nameUUIDFromBytes("playlist:$contentSignature".toByteArray()).toString()
                         val entityId = UUID.nameUUIDFromBytes(playlistId.toByteArray()).toString()
                         val payload = JSONObject().apply {
                             put("playlist_id", playlistId)
@@ -287,16 +331,25 @@ class MeloSyncManager @Inject constructor(
 
                     if (mutationsArr != null && mutationsArr.length() > 0) {
                         val writableDb = database.openHelper.writableDatabase
-                        val nowStr = LocalDateTime.now().toString()
+                        val nowMillis = System.currentTimeMillis()
 
                         for (i in 0 until mutationsArr.length()) {
                             val m = mutationsArr.getJSONObject(i)
                             val entityType = m.optString("entity_type")
+                            val operation = m.optString("operation", "upsert")
                             val payload = m.optJSONObject("payload") ?: continue
 
                             when (entityType) {
                                 "playlist" -> {
-                                    val playlistId = payload.optString("playlist_id")
+                                    val playlistId = payload.optString("playlist_id").ifBlank { m.optString("entity_id") }
+                                    if (operation == "delete") {
+                                        if (playlistId.isNotBlank()) {
+                                            writableDb.execSQL("DELETE FROM playlist WHERE id = ?", arrayOf<Any>(playlistId))
+                                            writableDb.execSQL("DELETE FROM playlist_song_map WHERE playlistId = ?", arrayOf<Any>(playlistId))
+                                        }
+                                        continue
+                                    }
+
                                     val name = payload.optString("name")
                                     val desc = payload.optString("description")
                                     val thumb = payload.optString("thumbnail_url")
@@ -305,30 +358,32 @@ class MeloSyncManager @Inject constructor(
                                     if (playlistId.isNotBlank() && name.isNotBlank()) {
                                         writableDb.execSQL(
                                             """
-                                            INSERT INTO playlist (id, name, description, thumbnailUrl, isAutoSync, isEditable, isLocal, createdAt, lastUpdateTime)
-                                            VALUES (?, ?, ?, ?, 1, 1, 0, ?, ?)
+                                            INSERT INTO playlist (id, name, description, thumbnailUrl, isAutoSync, isEditable, isLocal, createdAt, lastUpdateTime, bookmarkedAt)
+                                            VALUES (?, ?, ?, ?, 1, 1, 0, ?, ?, ?)
                                             ON CONFLICT(id) DO UPDATE SET
                                                 name = excluded.name,
                                                 description = excluded.description,
                                                 thumbnailUrl = COALESCE(excluded.thumbnailUrl, playlist.thumbnailUrl),
-                                                isAutoSync = 1
+                                                isAutoSync = 1,
+                                                bookmarkedAt = COALESCE(playlist.bookmarkedAt, excluded.bookmarkedAt)
                                             """.trimIndent(),
                                             arrayOf<Any?>(
                                                 playlistId,
                                                 name,
                                                 desc.ifBlank { null },
                                                 thumb.ifBlank { null },
-                                                nowStr,
-                                                nowStr
+                                                nowMillis,
+                                                nowMillis,
+                                                nowMillis
                                             )
                                         )
 
-                                        if (tracks != null && tracks.length() > 0) {
+                                        if (tracks != null) {
                                             writableDb.execSQL("DELETE FROM playlist_song_map WHERE playlistId = ?", arrayOf<Any>(playlistId))
                                             for (t in 0 until tracks.length()) {
                                                 val track = tracks.getJSONObject(t)
                                                 val songId = track.optString("song_id")
-                                                val songTitle = track.optString("title")
+                                                val songTitle = track.optString("title").ifBlank { "Track ${t + 1}" }
                                                 val duration = track.optInt("duration", -1)
                                                 val songThumb = track.optString("thumbnail_url")
                                                 val albumName = track.optString("album_name")
@@ -349,7 +404,7 @@ class MeloSyncManager @Inject constructor(
                                                             duration,
                                                             songThumb.ifBlank { null },
                                                             albumName.ifBlank { null },
-                                                            nowStr
+                                                            nowMillis
                                                         )
                                                     )
 
@@ -372,16 +427,25 @@ class MeloSyncManager @Inject constructor(
                                     if (songId.isNotBlank()) {
                                         writableDb.execSQL(
                                             """
-                                            INSERT INTO song (id, title, liked)
-                                            VALUES (?, ?, ?)
-                                            ON CONFLICT(id) DO UPDATE SET liked = excluded.liked
+                                            INSERT INTO song (id, title, liked, likedDate, inLibrary)
+                                            VALUES (?, ?, ?, ?, ?)
+                                            ON CONFLICT(id) DO UPDATE SET 
+                                                liked = excluded.liked,
+                                                likedDate = excluded.likedDate
                                             """.trimIndent(),
-                                            arrayOf<Any>(songId, title, if (isLiked) 1 else 0)
+                                            arrayOf<Any?>(
+                                                songId,
+                                                title,
+                                                if (isLiked) 1 else 0,
+                                                if (isLiked) nowMillis else null,
+                                                nowMillis
+                                            )
                                         )
                                     }
                                 }
                             }
                         }
+                        database.invalidationTracker.refreshVersionsAsync()
                     }
 
                     if (nextCursor > 0) {

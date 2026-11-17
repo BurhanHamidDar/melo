@@ -103,8 +103,30 @@ internal fun announceAddedToPlaylist(
             thumbnail = first?.thumbnailUrl,
             iconRes = R.drawable.playlist_add,
             actionLabel = if (playlist.playlist.browseId == null) (context?.getString(R.string.undo) ?: "Undo") else null,
-            onAction = { database.query { removeAddedSongs(playlist.id, ids, playlist.songCount) } },
+            onAction = {
+                database.query { removeAddedSongs(playlist.id, ids, playlist.songCount) }
+                if (context != null) {
+                    kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                        runCatching {
+                            val syncManager = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                context.applicationContext,
+                                com.mochyy.mochymusic.di.MeloSyncEntryPoint::class.java
+                            ).syncManager()
+                            syncManager.syncNow()
+                        }
+                    }
+                }
+            },
         )
+        if (context != null) {
+            runCatching {
+                val syncManager = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                    context.applicationContext,
+                    com.mochyy.mochymusic.di.MeloSyncEntryPoint::class.java
+                ).syncManager()
+                syncManager.syncNow()
+            }
+        }
     }
 }
 

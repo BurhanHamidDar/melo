@@ -607,6 +607,15 @@ fun SongMenu(
                                         )
                                         delete(playlistSong.map.copy(position = Int.MAX_VALUE))
                                     }
+                                    coroutineScope.launch(Dispatchers.IO) {
+                                        runCatching {
+                                            val syncManager = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                                context.applicationContext,
+                                                com.mochyy.mochymusic.di.MeloSyncEntryPoint::class.java
+                                            ).syncManager()
+                                            syncManager.syncNow()
+                                        }
+                                    }
                                     onDismiss()
                                 }
                             )

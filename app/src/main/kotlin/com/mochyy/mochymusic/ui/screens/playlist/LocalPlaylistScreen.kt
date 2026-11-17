@@ -317,6 +317,7 @@ fun LocalPlaylistScreen(
                 TextButton(
                     onClick = {
                         showDeletePlaylistDialog = false
+                        val pId = playlist?.id
                         database.query {
                             playlist?.let { delete(it.playlist) }
                         }
@@ -324,6 +325,15 @@ fun LocalPlaylistScreen(
                             playlist?.playlist?.browseId?.let { YouTube.deletePlaylist(it) }
                             // Its generated or picked cover is no use to anyone now.
                             PlaylistCoverStore.deleteStale(context.applicationContext, viewModel.playlistId, null)
+                            if (pId != null) {
+                                runCatching {
+                                    val syncManager = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                        context.applicationContext,
+                                        com.mochyy.mochymusic.di.MeloSyncEntryPoint::class.java
+                                    ).syncManager()
+                                    syncManager.deleteCloudPlaylist(pId)
+                                }
+                            }
                         }
                         navController.popBackStack()
                     }

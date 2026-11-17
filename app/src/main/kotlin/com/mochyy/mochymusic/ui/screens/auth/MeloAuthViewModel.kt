@@ -68,6 +68,6 @@ class MeloAuthViewModel @Inject constructor(
     }
 
     suspend fun triggerSync() {
-        syncManager.syncNow()
+        syncManager.syncNow(forceFullPull = true)
     }
 }

@@ -27,19 +27,44 @@ data class MeloReleaseInfo(
 )
 
 object MeloUpdateManager {
-    // Configurable backend API base URL
-    var backendApiBaseUrl = if (BuildConfig.DEBUG) "http://10.0.2.2:8080" else "https://api.melo.app"
-
-    val candidateBaseUrls: List<String> = if (BuildConfig.DEBUG) {
-        listOf(
-            "http://10.0.2.2:8080",
-            "http://192.168.31.36:8080",
-            "http://127.0.0.1:8080",
-            "https://api.melo.app"
-        )
-    } else {
-        listOf("https://api.melo.app")
+    private val isEmulator: Boolean by lazy {
+        android.os.Build.FINGERPRINT.startsWith("generic") ||
+            android.os.Build.FINGERPRINT.startsWith("unknown") ||
+            android.os.Build.MODEL.contains("google_sdk") ||
+            android.os.Build.MODEL.contains("Emulator") ||
+            android.os.Build.MODEL.contains("Android SDK built for x86") ||
+            android.os.Build.MANUFACTURER.contains("Genymotion") ||
+            (android.os.Build.BRAND.startsWith("generic") && android.os.Build.DEVICE.startsWith("generic")) ||
+            "google_sdk" == android.os.Build.PRODUCT
     }
+
+    // Configurable backend API base URL
+    var backendApiBaseUrl = if (BuildConfig.DEBUG) {
+        if (isEmulator) "http://10.0.2.2:8080" else "http://192.168.31.36:8080"
+    } else {
+        "https://api.melo.app"
+    }
+
+    val candidateBaseUrls: List<String>
+        get() = if (BuildConfig.DEBUG) {
+            if (isEmulator) {
+                listOf(
+                    "http://10.0.2.2:8080",
+                    "http://192.168.31.36:8080",
+                    "http://127.0.0.1:8080",
+                    "https://api.melo.app"
+                )
+            } else {
+                listOf(
+                    "http://192.168.31.36:8080",
+                    "http://10.0.2.2:8080",
+                    "http://127.0.0.1:8080",
+                    "https://api.melo.app"
+                )
+            }
+        } else {
+            listOf("https://api.melo.app")
+        }
 
     private val _updateState = MutableStateFlow<MeloReleaseInfo?>(null)
     val updateState: StateFlow<MeloReleaseInfo?> = _updateState.asStateFlow()

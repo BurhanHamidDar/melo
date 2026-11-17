@@ -81,6 +81,7 @@ fun AddToPlaylistDialogOnline(
     viewModel: PlaylistsViewModel = hiltViewModel()
 ) {
     val database = LocalDatabase.current
+    val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
     val coroutineScope = rememberCoroutineScope()
     val viewStateMap = remember { mutableStateMapOf<String, ItemsPage?>() }
     val (sortType, onSortTypeChange) = rememberEnumPreference(
@@ -264,6 +265,13 @@ fun AddToPlaylistDialogOnline(
                                                                     .e(e.toString())
                                                             }
                                                             database.addSongToPlaylist(playlist, ids)
+                                                            runCatching {
+                                                                val syncManager = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                                                    context,
+                                                                    com.mochyy.mochymusic.di.MeloSyncEntryPoint::class.java
+                                                                ).syncManager()
+                                                                syncManager.syncNow()
+                                                            }
                                                         }
                                                     }
                                                     viewStateMap.clear()
@@ -406,6 +414,15 @@ fun AddToPlaylistDialogOnline(
                                 }
                             )
                         }
+                        coroutineScope.launch(Dispatchers.IO) {
+                            runCatching {
+                                val syncManager = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                    context,
+                                    com.mochyy.mochymusic.di.MeloSyncEntryPoint::class.java
+                                ).syncManager()
+                                syncManager.syncNow()
+                            }
+                        }
                     }
                 ) {
                     Text(stringResource(R.string.skip_duplicates))
@@ -417,6 +434,15 @@ fun AddToPlaylistDialogOnline(
                         onDismiss()
                         database.transaction {
                             addSongToPlaylist(selectedPlaylist!!, songIds!!)
+                        }
+                        coroutineScope.launch(Dispatchers.IO) {
+                            runCatching {
+                                val syncManager = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                    context,
+                                    com.mochyy.mochymusic.di.MeloSyncEntryPoint::class.java
+                                ).syncManager()
+                                syncManager.syncNow()
+                            }
                         }
                     }
                 ) {

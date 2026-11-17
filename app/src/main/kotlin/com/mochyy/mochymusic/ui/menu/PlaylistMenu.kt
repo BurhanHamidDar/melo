@@ -223,6 +223,13 @@ fun PlaylistMenu(
                             playlist.playlist.browseId?.let { YouTube.deletePlaylist(it) }
                             // Its generated or picked cover is no use to anyone now.
                             PlaylistCoverStore.deleteStale(context.applicationContext, playlist.id, null)
+                            runCatching {
+                                val syncManager = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                                    context.applicationContext,
+                                    com.mochyy.mochymusic.di.MeloSyncEntryPoint::class.java
+                                ).syncManager()
+                                syncManager.deleteCloudPlaylist(playlist.id)
+                            }
                         }
                     }
                 ) {

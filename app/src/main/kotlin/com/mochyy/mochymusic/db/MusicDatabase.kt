@@ -57,6 +57,9 @@ class MusicDatabase(
     val speedDialDao: SpeedDialDao
         get() = delegate.speedDialDao
 
+    val invalidationTracker: androidx.room.InvalidationTracker
+        get() = delegate.invalidationTracker
+
     /**
      * Pins [item], evicting the oldest pin first if that would push the count past
      * [com.mochyy.mochymusic.db.daos.SpeedDialDao.Companion.MaxPinned].
