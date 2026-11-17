@@ -32,6 +32,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -290,6 +291,8 @@ private val IconBgColor = Color(0xFF333338)
 
 @Composable
 fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null) {
+    val authViewModel: com.mochyy.mochymusic.ui.screens.auth.MeloAuthViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val authUser by authViewModel.currentUser.collectAsState()
     val focusManager = LocalFocusManager.current
     val sheets = com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState.current
     val devices = com.mochyy.mochymusic.ui.screens.devices.rememberDevicesLink()
@@ -527,7 +530,12 @@ fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         CategoryBubble(
-                            title = "Melo Account & Sync",
+                            title = if (authUser != null) {
+                                val name = authUser?.displayName?.takeIf { it.isNotBlank() } ?: authUser?.email?.split("@")?.firstOrNull() ?: "Active"
+                                "Melo Account • $name"
+                            } else {
+                                "Melo Account & Sync"
+                            },
                             iconRes = R.drawable.account,
                             selected = selected == "melo_login",
                             onClick = { open("melo_login") }

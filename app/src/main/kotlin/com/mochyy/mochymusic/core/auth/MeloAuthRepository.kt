@@ -23,6 +23,7 @@ class MeloAuthRepository @Inject constructor() {
     private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
 
     val currentUser: Flow<FirebaseUser?> = callbackFlow {
+        trySend(auth.currentUser)
         val listener = FirebaseAuth.AuthStateListener { authInstance ->
             trySend(authInstance.currentUser)
         }

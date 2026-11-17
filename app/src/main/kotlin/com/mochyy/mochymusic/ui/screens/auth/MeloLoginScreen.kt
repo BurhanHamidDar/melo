@@ -45,6 +45,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +58,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -72,6 +74,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -84,6 +87,7 @@ import com.mochyy.mochymusic.ui.screens.setup.onboarding.OnbSubtitleTracking
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.OnbTitleTracking
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.PageBadge
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 private val WarningRed = Color(0xFFFF453A)
@@ -100,6 +104,10 @@ fun MeloLoginScreen(
     authViewModel: MeloAuthViewModel? = null,
     modifier: Modifier = Modifier,
 ) {
+    val currentUser by (authViewModel?.currentUser ?: remember { MutableStateFlow(null) }).collectAsState()
+    val syncStatus by (authViewModel?.syncStatus ?: remember { MutableStateFlow("Local library active") }).collectAsState()
+    val isSyncing by (authViewModel?.isSyncing ?: remember { MutableStateFlow(false) }).collectAsState()
+
     var isSignUp by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -178,12 +186,284 @@ fun MeloLoginScreen(
         val maxW = maxWidth
         val sidePadding = if (maxW < 340.dp) 20.dp else 28.dp
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .widthIn(max = Onb.MaxContentWidth)
-                .fillMaxSize(),
-        ) {
+        if (currentUser != null) {
+            val user = currentUser!!
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = Onb.MaxContentWidth)
+                    .fillMaxSize(),
+            ) {
+                // Top Bar with Back, Title, and Done button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = sidePadding)
+                        .padding(top = Onb.TopClearance, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF242424))
+                            .clickable(onClick = onDismiss),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_back),
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+
+                    Text(
+                        text = "Melo Account",
+                        style = TextStyle(
+                            fontFamily = InterFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
+                            color = Color.White,
+                        ),
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color(0xFF242424))
+                            .clickable(onClick = onDismiss)
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Done",
+                            style = TextStyle(
+                                fontFamily = InterFontFamily,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                                color = Color.White,
+                            ),
+                        )
+                    }
+                }
+
+                // Scrollable Account & Sync Body
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = sidePadding)
+                        .padding(top = 16.dp, bottom = 16.dp),
+                ) {
+                    // Profile Header Card
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(Color(0xFF1C1C1C))
+                            .padding(20.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF2C2C2C)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (user.photoUrl != null) {
+                                AsyncImage(
+                                    model = user.photoUrl,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.size(64.dp).clip(CircleShape),
+                                )
+                            } else {
+                                Text(
+                                    text = (user.displayName?.take(1) ?: user.email?.take(1) ?: "M").uppercase(),
+                                    color = Color.White,
+                                    fontSize = 26.sp,
+                                    fontFamily = InterFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = user.displayName?.takeIf { it.isNotBlank() } ?: "Melo Listener",
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontFamily = InterFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                text = user.email ?: "",
+                                color = Onb.Subtitle,
+                                fontSize = 13.sp,
+                                fontFamily = InterFontFamily,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF282828))
+                                    .padding(horizontal = 9.dp, vertical = 4.dp),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF30D158)),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = "Connected to Melo Cloud",
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontFamily = InterFontFamily,
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(20.dp))
+
+                    // Cloud Sync Card
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(Color(0xFF1C1C1C))
+                            .padding(20.dp),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF2C2C2C)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.sync),
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                            Spacer(Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Cloud Library Sync",
+                                    color = Color.White,
+                                    fontSize = 17.sp,
+                                    fontFamily = InterFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    text = "Liked songs and playlists",
+                                    color = Onb.Subtitle,
+                                    fontSize = 12.sp,
+                                    fontFamily = InterFontFamily,
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(14.dp))
+
+                        // Status pill
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color(0xFF141414))
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                        ) {
+                            if (isSyncing) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF30D158)),
+                                )
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = syncStatus,
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 13.sp,
+                                fontFamily = InterFontFamily,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        OnbButton(
+                            text = if (isSyncing) "Syncing Library..." else "Sync Now",
+                            style = OnbButtonStyle.Secondary,
+                            enabled = !isSyncing,
+                            onClick = {
+                                scope.launch {
+                                    authViewModel?.triggerSync()
+                                }
+                            },
+                        )
+                    }
+
+                    Spacer(Modifier.height(20.dp))
+
+                    // Sign Out Button
+                    OnbButton(
+                        text = "Sign Out",
+                        style = OnbButtonStyle.Secondary,
+                        onClick = {
+                            authViewModel?.signOut()
+                        },
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Text(
+                        text = "Signing out will switch Melo back to guest mode. Your local songs and cached music will remain safe on your device.",
+                        color = Onb.Faint,
+                        fontSize = 11.5.sp,
+                        fontFamily = InterFontFamily,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = Onb.MaxContentWidth)
+                    .fillMaxSize(),
+            ) {
             // Scrollable Content
             Column(
                 modifier = Modifier
@@ -427,6 +707,7 @@ fun MeloLoginScreen(
             }
         }
     }
+}
 }
 
 /** Segmented Tab Pill for switching between Sign In and Create Account */

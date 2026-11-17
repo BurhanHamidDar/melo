@@ -239,7 +239,7 @@ fun NavGraphBuilder.navigationBuilder(
         val authViewModel: com.mochyy.mochymusic.ui.screens.auth.MeloAuthViewModel = androidx.hilt.navigation.compose.hiltViewModel()
         com.mochyy.mochymusic.ui.screens.auth.MeloLoginScreen(
             onDismiss = { navController.popBackStack() },
-            onLoginSuccess = { navController.popBackStack() },
+            onLoginSuccess = {},
             authViewModel = authViewModel,
         )
     }
