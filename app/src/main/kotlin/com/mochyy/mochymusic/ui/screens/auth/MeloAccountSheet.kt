@@ -82,8 +82,8 @@ private fun AccountSheetContent(
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
     val syncState by authViewModel.syncStatus.collectAsState()
+    val isSyncing by authViewModel.isSyncing.collectAsState()
     val scope = rememberCoroutineScope()
-    var isSyncing by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -220,13 +220,8 @@ private fun AccountSheetContent(
                         style = OnbButtonStyle.Secondary,
                         enabled = !isSyncing,
                         onClick = {
-                            isSyncing = true
                             scope.launch {
-                                try {
-                                    authViewModel.triggerSync()
-                                } finally {
-                                    isSyncing = false
-                                }
+                                authViewModel.triggerSync()
                             }
                         },
                     )

@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.mochyy.mochymusic.LocalPlayerConnection
@@ -83,6 +84,8 @@ import com.mochyy.mochymusic.ui.component.PlaylistThumbnail
 import com.mochyy.mochymusic.ui.component.homeCardSize
 import com.mochyy.mochymusic.ui.menu.ArtistMenu
 import com.mochyy.mochymusic.ui.menu.SongMenu
+import com.mochyy.mochymusic.ui.screens.auth.MeloAuthViewModel
+import com.mochyy.mochymusic.ui.screens.auth.showAccountSheet
 import com.mochyy.mochymusic.ui.screens.settings.figureSp
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.idCardName
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
@@ -138,6 +141,8 @@ internal fun UserProfilePage(
     viewModel: UserProfileViewModel,
 ) {
     val popup = LocalZoomOutOverlayState.current
+    val authViewModel: MeloAuthViewModel = hiltViewModel()
+    val authUser by authViewModel.currentUser.collectAsState()
     val statusBarTop = WindowInsets.stableSystemBars.asPaddingValues().calculateTopPadding()
     val name = idCardName(username)
     val openEditor = { popup.showEditProfileSheet(currentName = username, currentPhoto = photo) }
@@ -203,21 +208,39 @@ internal fun UserProfilePage(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             EditProfilePill(onClick = openEditor)
-            Text(
-                text = "Melo Account",
-                style = TextStyle(
-                    fontFamily = InterFontFamily,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.5.sp,
-                    letterSpacing = (-0.03).em,
-                    color = Color.White,
-                ),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clip(CircleShape)
                     .background(PillGrey)
-                    .clickable { navController.navigate("melo_login") }
+                    .clickable {
+                        popup.showAccountSheet(
+                            authViewModel = authViewModel,
+                            onNavigateToLogin = { navController.navigate("melo_login") },
+                        )
+                    }
                     .padding(horizontal = 15.dp, vertical = 8.dp),
-            )
+            ) {
+                if (authUser != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF30D158)),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text(
+                    text = if (authUser != null) (authUser?.displayName?.ifBlank { null } ?: "Melo Account") else "Melo Account",
+                    style = TextStyle(
+                        fontFamily = InterFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.5.sp,
+                        letterSpacing = (-0.03).em,
+                        color = Color.White,
+                    ),
+                )
+            }
         }
         Spacer(Modifier.height(40.dp))
         Box(

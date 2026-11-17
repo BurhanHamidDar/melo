@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseUser
 import com.mochyy.mochymusic.core.auth.MeloAuthRepository
+import com.mochyy.mochymusic.core.sync.MeloSyncManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,32 +15,47 @@ import javax.inject.Inject
 @HiltViewModel
 class MeloAuthViewModel @Inject constructor(
     private val authRepo: MeloAuthRepository,
+    private val syncManager: MeloSyncManager,
 ) : ViewModel() {
     private val _currentUser = MutableStateFlow<FirebaseUser?>(null)
     val currentUser: StateFlow<FirebaseUser?> = _currentUser.asStateFlow()
 
-    private val _syncStatus = MutableStateFlow("Local library active")
-    val syncStatus: StateFlow<String> = _syncStatus.asStateFlow()
+    val syncStatus: StateFlow<String> = syncManager.syncStatus
+    val isSyncing: StateFlow<Boolean> = syncManager.isSyncing
 
     init {
         viewModelScope.launch {
             authRepo.currentUser.collect { user ->
                 _currentUser.value = user
-                _syncStatus.value = if (user != null) "Cloud library synchronized" else "Guest mode — local only"
+                if (user != null) {
+                    syncManager.syncNow()
+                }
             }
         }
     }
 
     suspend fun signInWithEmail(email: String, pass: String): Result<FirebaseUser> {
-        return authRepo.signInWithEmail(email, pass)
+        val res = authRepo.signInWithEmail(email, pass)
+        if (res.isSuccess) {
+            syncManager.syncNow()
+        }
+        return res
     }
 
     suspend fun signUpWithEmail(email: String, pass: String, name: String): Result<FirebaseUser> {
-        return authRepo.signUpWithEmail(email, pass, name)
+        val res = authRepo.signUpWithEmail(email, pass, name)
+        if (res.isSuccess) {
+            syncManager.syncNow()
+        }
+        return res
     }
 
     suspend fun signInWithGoogle(idToken: String): Result<FirebaseUser> {
-        return authRepo.signInWithGoogle(idToken)
+        val res = authRepo.signInWithGoogle(idToken)
+        if (res.isSuccess) {
+            syncManager.syncNow()
+        }
+        return res
     }
 
     fun signOut() {
@@ -47,8 +63,6 @@ class MeloAuthViewModel @Inject constructor(
     }
 
     suspend fun triggerSync() {
-        _syncStatus.value = "Synchronizing..."
-        kotlinx.coroutines.delay(1200)
-        _syncStatus.value = "All items up to date"
+        syncManager.syncNow()
     }
 }

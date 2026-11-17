@@ -9,6 +9,8 @@
 
 package com.mochyy.mochymusic.ui.screens.auth
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -55,6 +57,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -69,6 +72,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.ui.component.RemoteFocus
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.Onb
@@ -104,6 +110,52 @@ fun MeloLoginScreen(
 
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val webClientId = "522961269977-4868df4ujusqae79lj55pg2icdek2srh.apps.googleusercontent.com"
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(webClientId)
+            .requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account.idToken
+            if (idToken != null) {
+                isLoading = true
+                errorMessage = null
+                scope.launch {
+                    try {
+                        val res = authViewModel?.signInWithGoogle(idToken)
+                        if (res?.isSuccess == true) {
+                            onLoginSuccess()
+                        } else {
+                            errorMessage = res?.exceptionOrNull()?.localizedMessage ?: "Google sign-in failed."
+                        }
+                    } catch (e: Exception) {
+                        errorMessage = e.localizedMessage ?: "Google sign-in failed."
+                    } finally {
+                        isLoading = false
+                    }
+                }
+            } else {
+                errorMessage = "Google sign-in did not return a valid token."
+            }
+        } catch (e: ApiException) {
+            if (e.statusCode != 12501) { // 12501 = user canceled
+                errorMessage = "Google sign-in error (${e.statusCode}): ${e.localizedMessage}"
+            }
+        } catch (e: Exception) {
+            errorMessage = e.localizedMessage ?: "Google sign-in failed."
+        }
+    }
 
     BoxWithConstraints(
         modifier = modifier
@@ -328,6 +380,7 @@ fun MeloLoginScreen(
                 GoogleSignInPillButton(
                     onClick = {
                         errorMessage = null
+                        googleSignInLauncher.launch(googleSignInClient.signInIntent)
                         onGoogleSignInClick()
                     },
                 )
