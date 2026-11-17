@@ -1,69 +1,126 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getAuditLogs, AuditLog } from '@/lib/api';
+import {
+  ShieldCheck,
+  Clock,
+  Activity,
+  User,
+  Key,
+  RefreshCw,
+} from 'lucide-react';
 
 export default function AuditLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadLogs = () => {
+    setLoading(true);
     getAuditLogs()
-      .then((res) => setLogs(res.audit_logs))
+      .then((res) => setLogs(res.audit_logs || []))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadLogs();
   }, []);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Administrator Audit Logs</h1>
-        <p className="text-sm text-gray-400 mt-1">Immutable record of all privileged administrative modifications</p>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-indigo-400" />
+            <span>Administrator Audit Ledger</span>
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Immutable cryptographic ledger of all privileged administrator operations in Neon DB
+          </p>
+        </div>
+
+        <button
+          onClick={loadLogs}
+          className="px-3.5 py-1.5 rounded-xl bg-[#141620] hover:bg-[#1c1e2b] border border-white/[0.08] text-xs font-medium text-slate-300 flex items-center gap-2 transition cursor-pointer"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
+          <span>Refresh Ledger</span>
+        </button>
       </div>
 
-      <div className="bg-[#161a22] border border-[#262b36] rounded-xl overflow-hidden shadow-sm">
-        <table className="min-w-full divide-y divide-[#262b36]">
-          <thead className="bg-[#1c212b]">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Timestamp</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Target Type</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Target ID</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Reason</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#262b36]">
-            {loading ? (
+      {/* Table Container */}
+      <div className="bg-[#12131b] border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-white/[0.04]">
+            <thead className="bg-[#161723]">
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-400">Loading audit records...</td>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Timestamp
+                </th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Action Event
+                </th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Target Type
+                </th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Target ID
+                </th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Operational Reason
+                </th>
               </tr>
-            ) : logs.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-400">No audit log records yet.</td>
-              </tr>
-            ) : (
-              logs.map((log) => (
-                <tr key={log.id} className="hover:bg-[#1a1f29] transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-400 font-mono">
-                    {new Date(log.created_at).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-white">
-                    {log.action}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-400 capitalize">
-                    {log.target_type || '—'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-gray-400">
-                    {log.target_id ? log.target_id.slice(0, 8) + '...' : '—'}
-                  </td>
-                  <td className="px-6 py-4 text-xs text-gray-300">
-                    {log.reason || 'None specified'}
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-xs text-slate-400">
+                    <div className="flex items-center justify-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" />
+                      <span>Reading audit records from PostgreSQL...</span>
+                    </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : logs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-xs text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-1.5">
+                      <ShieldCheck className="w-6 h-6 text-indigo-400" />
+                      <span className="font-semibold text-slate-200">No Privileged Changes Recorded Yet</span>
+                      <span className="text-[11px] text-slate-500">
+                        Actions like releasing updates or user suspensions will populate here.
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                logs.map((log) => (
+                  <tr key={log.id} className="hover:bg-white/[0.02] transition">
+                    <td className="px-5 py-3.5 whitespace-nowrap text-[11px] text-slate-400 font-mono">
+                      {new Date(log.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <span className="text-xs font-semibold text-white px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-mono">
+                        {log.action}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-300 capitalize">
+                      {log.target_type || '—'}
+                    </td>
+                    <td className="px-5 py-3.5 whitespace-nowrap text-[11px] font-mono text-slate-400">
+                      {log.target_id ? log.target_id.slice(0, 12) + '...' : '—'}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-slate-300">
+                      {log.reason || 'Standard administrative operation'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

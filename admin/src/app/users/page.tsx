@@ -1,7 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getUsers, updateUserStatus, UserRecord } from '@/lib/api';
+import {
+  Users,
+  Search,
+  Shield,
+  ShieldAlert,
+  CheckCircle,
+  Clock,
+  MoreVertical,
+  X,
+  UserCheck,
+  Ban,
+  AlertTriangle,
+  RefreshCw,
+} from 'lucide-react';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -10,11 +24,12 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
   const [reason, setReason] = useState('');
   const [newStatus, setNewStatus] = useState('suspended');
+  const [submitting, setSubmitting] = useState(false);
 
   const loadUsers = () => {
     setLoading(true);
     getUsers(query)
-      .then((res) => setUsers(res.users))
+      .then((res) => setUsers(res.users || []))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   };
@@ -23,145 +38,252 @@ export default function UsersPage() {
     loadUsers();
   }, []);
 
-  const handleStatusChange = async () => {
-    if (!selectedUser || !reason) {
-      alert('A reason is mandatory for any status change');
+  const handleStatusChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser || !reason.trim()) {
+      alert('A valid reason is mandatory for any administrative moderation action.');
       return;
     }
+    setSubmitting(true);
     try {
-      await updateUserStatus(selectedUser.id, newStatus, reason);
-      alert('User status updated');
+      await updateUserStatus(selectedUser.id, newStatus, reason.trim());
       setSelectedUser(null);
       setReason('');
       loadUsers();
     } catch (e: any) {
-      alert(e.message);
+      alert(e.message || 'Failed to update user status');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">User Management</h1>
-          <p className="text-sm text-gray-400 mt-1">Search, inspect and moderate Melo listeners</p>
+          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <Users className="w-5 h-5 text-indigo-400" />
+            <span>User Management & Cloud Sync</span>
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Registered Melo listeners, sync mutations, and account status controls
+          </p>
         </div>
 
-        <div className="flex space-x-2">
-          <input
-            type="text"
-            placeholder="Search username or email..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="px-3.5 py-2 bg-[#161a22] border border-[#262b36] rounded-lg text-sm text-white focus:outline-none focus:border-[#ff3b5c]"
-          />
+        {/* Search Input */}
+        <div className="flex items-center gap-2">
+          <div className="relative w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+              <Search className="w-3.5 h-3.5" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search username or email..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && loadUsers()}
+              className="w-full pl-9 pr-3.5 py-1.5 bg-[#141620] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
+            />
+          </div>
           <button
             onClick={loadUsers}
-            className="px-4 py-2 bg-[#ff3b5c] text-white rounded-lg text-sm font-medium hover:bg-[#e02f4d]"
+            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium shadow-sm transition cursor-pointer"
           >
             Search
           </button>
         </div>
       </div>
 
-      <div className="bg-[#161a22] border border-[#262b36] rounded-xl overflow-hidden shadow-sm">
-        <table className="min-w-full divide-y divide-[#262b36]">
-          <thead className="bg-[#1c212b]">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">User</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Firebase UID</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Visibility</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Created</th>
-              <th className="px-6 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#262b36]">
-            {loading ? (
+      {/* Table Container */}
+      <div className="bg-[#12131b] border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-white/[0.04]">
+            <thead className="bg-[#161723]">
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-400">Loading users...</td>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  User
+                </th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Firebase UID
+                </th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Visibility
+                </th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="px-5 py-3 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
-            ) : users.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-400">No users found.</td>
-              </tr>
-            ) : (
-              users.map((u) => (
-                <tr key={u.id} className="hover:bg-[#1a1f29] transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-white">{u.display_name || u.username || 'Anonymous'}</div>
-                    <div className="text-xs text-gray-400">{u.email || 'No email'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap font-mono text-xs text-gray-400">{u.firebase_uid.slice(0, 12)}...</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-0.5 text-xs font-semibold rounded ${
-                      u.account_status === 'active'
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                    }`}>
-                      {u.account_status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-400 capitalize">{u.profile_visibility}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-400">{new Date(u.created_at).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <button
-                      onClick={() => setSelectedUser(u)}
-                      className="text-xs font-medium text-[#ff3b5c] hover:underline"
-                    >
-                      Manage
-                    </button>
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-xs text-slate-400">
+                    <div className="flex items-center justify-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" />
+                      <span>Loading registered listeners...</span>
+                    </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-xs text-slate-400">
+                    No users matching criteria.
+                  </td>
+                </tr>
+              ) : (
+                users.map((u) => {
+                  const isActive = u.account_status === 'active';
+                  const isSuspended = u.account_status === 'suspended';
+                  const initials = (u.display_name || u.email || 'User').slice(0, 2).toUpperCase();
+
+                  return (
+                    <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
+                      {/* User Cell */}
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600/40 to-violet-600/40 border border-white/[0.08] flex items-center justify-center font-bold text-xs text-indigo-300">
+                            {initials}
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-white">
+                              {u.display_name || u.username || 'Anonymous Listener'}
+                            </div>
+                            <div className="text-[11px] text-slate-400">
+                              {u.email || 'No email attached'}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* UID */}
+                      <td className="px-5 py-3.5 whitespace-nowrap text-[11px] font-mono text-slate-400">
+                        {u.firebase_uid}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <span
+                          className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                            isActive
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              : isSuspended
+                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                              : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                          }`}
+                        >
+                          {u.account_status}
+                        </span>
+                      </td>
+
+                      {/* Visibility */}
+                      <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-300 capitalize">
+                        {u.profile_visibility}
+                      </td>
+
+                      {/* Created */}
+                      <td className="px-5 py-3.5 whitespace-nowrap text-[11px] text-slate-400 font-mono">
+                        {new Date(u.created_at).toLocaleDateString()}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-5 py-3.5 whitespace-nowrap text-right">
+                        <button
+                          onClick={() => {
+                            setSelectedUser(u);
+                            setNewStatus(isActive ? 'suspended' : 'active');
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-xs font-medium text-slate-200 transition cursor-pointer"
+                        >
+                          Moderate
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
+      {/* Moderation Modal */}
       {selectedUser && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-[#161a22] border border-[#262b36] rounded-xl p-6 max-w-md w-full space-y-4">
-            <h3 className="text-lg font-bold text-white">Moderate User: {selectedUser.username || selectedUser.id}</h3>
-            
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">New Account Status</label>
-              <select
-                value={newStatus}
-                onChange={(e) => setNewStatus(e.target.value)}
-                className="w-full px-3 py-2 bg-[#0d0f12] border border-[#262b36] rounded-lg text-sm text-white"
-              >
-                <option value="active">Active</option>
-                <option value="suspended">Suspended</option>
-                <option value="banned">Banned</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">Reason for Action (Mandatory)</label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={3}
-                placeholder="Reason recorded in audit logs..."
-                className="w-full px-3 py-2 bg-[#0d0f12] border border-[#262b36] rounded-lg text-sm text-white"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-[#141620] border border-white/[0.1] p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-amber-400" />
+                <span>Account Moderation</span>
+              </h3>
               <button
                 onClick={() => setSelectedUser(null)}
-                className="px-4 py-2 bg-gray-700 text-white rounded-lg text-sm"
+                className="text-slate-400 hover:text-white"
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleStatusChange}
-                className="px-4 py-2 bg-[#ff3b5c] text-white rounded-lg text-sm font-medium hover:bg-[#e02f4d]"
-              >
-                Apply
+                <X className="w-4 h-4" />
               </button>
             </div>
+
+            <form onSubmit={handleStatusChange} className="mt-4 space-y-4">
+              <div>
+                <span className="text-xs text-slate-400">Target User:</span>
+                <p className="text-xs font-semibold text-white mt-0.5">
+                  {selectedUser.email || selectedUser.firebase_uid}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  New Status
+                </label>
+                <select
+                  value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#0e0f15] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="active">Active (Restore Normal Access)</option>
+                  <option value="suspended">Suspended (Prevent Login & Sync)</option>
+                  <option value="banned">Banned (Permanent Restriction)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Mandatory Audit Reason
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="State clear operational reason for audit logging..."
+                  className="w-full px-3 py-2 bg-[#0e0f15] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedUser(null)}
+                  className="px-3.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] text-xs font-medium text-slate-300 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-medium text-white shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  {submitting ? 'Applying...' : 'Apply Status Change'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

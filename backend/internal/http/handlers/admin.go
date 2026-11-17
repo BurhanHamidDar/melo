@@ -34,7 +34,7 @@ func (h *AdminHandler) Overview(w http.ResponseWriter, r *http.Request) {
 		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users").Scan(&totalUsers)
 		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users WHERE last_seen_at >= NOW() - INTERVAL '30 days'").Scan(&activeUsers)
 		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users WHERE account_status IN ('suspended', 'banned')").Scan(&suspendedUsers)
-		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM playlists WHERE deleted_at IS NULL AND visibility = 'public'").Scan(&totalPlaylists)
+		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(DISTINCT entity_id) FROM sync_mutations WHERE entity_type = 'playlist'").Scan(&totalPlaylists)
 		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM reports WHERE status = 'open'").Scan(&openReports)
 		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM announcements WHERE status = 'published'").Scan(&activeAnnouncements)
 	}

@@ -1,28 +1,43 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { createAnnouncement, sendPushNotification } from '@/lib/api';
+import {
+  Megaphone,
+  BellRing,
+  Send,
+  CheckCircle,
+  AlertCircle,
+  Radio,
+  Sparkles,
+} from 'lucide-react';
 
 export default function AnnouncementsPage() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [severity, setSeverity] = useState('info');
   const [saving, setSaving] = useState(false);
+  const [announcementSuccess, setAnnouncementSuccess] = useState(false);
 
-  // Instant FCM test state
-  const [fcmTitle, setFcmTitle] = useState('Melo Notification');
-  const [fcmBody, setFcmBody] = useState('Testing push notifications on local host!');
+  // FCM Broadcast state
+  const [fcmTitle, setFcmTitle] = useState('New Music Drop on Melo!');
+  const [fcmBody, setFcmBody] = useState('Explore fresh community playlists and curated tracks.');
   const [fcmTarget, setFcmTarget] = useState('announcements');
   const [fcmSending, setFcmSending] = useState(false);
+  const [fcmSuccess, setFcmSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !body) {
-      alert('Title and Body are required.');
+      setError('Title and Body are required.');
       return;
     }
 
     setSaving(true);
+    setError(null);
+    setAnnouncementSuccess(false);
+
     try {
       await createAnnouncement({
         title,
@@ -30,11 +45,11 @@ export default function AnnouncementsPage() {
         severity,
         status: 'published',
       });
-      alert('Announcement created and push notification broadcasted to all devices via FCM!');
+      setAnnouncementSuccess(true);
       setTitle('');
       setBody('');
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message || 'Failed to create announcement');
     } finally {
       setSaving(false);
     }
@@ -43,11 +58,14 @@ export default function AnnouncementsPage() {
   const handleSendFCM = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fcmTitle || !fcmBody) {
-      alert('FCM Title and Body are required.');
+      setError('Notification Title and Body are required.');
       return;
     }
 
     setFcmSending(true);
+    setError(null);
+    setFcmSuccess(false);
+
     try {
       const isToken = fcmTarget.length > 50;
       await sendPushNotification({
@@ -56,120 +74,174 @@ export default function AnnouncementsPage() {
         topic: isToken ? undefined : fcmTarget,
         token: isToken ? fcmTarget : undefined,
       });
-      alert(`Push notification successfully sent via FCM to ${isToken ? 'Device Token' : `Topic: ${fcmTarget}`}!`);
+      setFcmSuccess(true);
     } catch (err: any) {
-      alert(`FCM Error: ${err.message}`);
+      setError(err.message || 'Failed to send FCM push notification');
     } finally {
       setFcmSending(false);
     }
   };
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="max-w-4xl space-y-8">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Broadcast Announcements & FCM</h1>
-        <p className="text-sm text-gray-400 mt-1">Publish notices to Melo clients and send real-time Firebase push alerts</p>
+        <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+          <Megaphone className="w-5 h-5 text-indigo-400" />
+          <span>Announcements & Push Notifications</span>
+        </h1>
+        <p className="text-xs text-slate-400 mt-0.5">
+          Broadcast banners to in-app notification center and push alerts via FCM
+        </p>
       </div>
 
-      {/* Main Announcement Broadcast */}
-      <form onSubmit={handleSubmit} className="p-6 bg-[#161a22] border border-[#262b36] rounded-xl space-y-4 shadow-sm">
-        <h2 className="text-base font-semibold text-white">Publish In-App Announcement</h2>
-        <div>
-          <label className="text-xs font-semibold text-gray-400 block mb-1">Announcement Title</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Server Maintenance or New Features"
-            className="w-full px-3.5 py-2 bg-[#0d0f12] border border-[#262b36] rounded-lg text-sm text-white"
-          />
+      {error && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2.5">
+          <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+          <span>{error}</span>
         </div>
+      )}
 
-        <div>
-          <label className="text-xs font-semibold text-gray-400 block mb-1">Severity Level</label>
-          <select
-            value={severity}
-            onChange={(e) => setSeverity(e.target.value)}
-            className="w-full px-3.5 py-2 bg-[#0d0f12] border border-[#262b36] rounded-lg text-sm text-white"
-          >
-            <option value="info">Info</option>
-            <option value="important">Important</option>
-            <option value="critical">Critical</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="text-xs font-semibold text-gray-400 block mb-1">Message Body</label>
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={3}
-            placeholder="Content shown in app announcement card..."
-            className="w-full px-3.5 py-2 bg-[#0d0f12] border border-[#262b36] rounded-lg text-sm text-white"
-          />
-        </div>
-
-        <div className="pt-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full py-2.5 bg-[#ff3b5c] text-white rounded-lg text-sm font-semibold hover:bg-[#e02f4d] transition-colors"
-          >
-            {saving ? 'Publishing...' : 'Broadcast Announcement (DB + FCM)'}
-          </button>
-        </div>
-      </form>
-
-      {/* Direct FCM Test Card */}
-      <form onSubmit={handleSendFCM} className="p-6 bg-[#161a22] border border-[#262b36] rounded-xl space-y-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-white">Instant FCM Push Notification Test</h2>
-          <span className="text-[10px] uppercase font-bold px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded">FCM Connected</span>
-        </div>
-        <p className="text-xs text-gray-400">Send direct push notifications to topic (<code>announcements</code>, <code>all</code>) or a specific device FCM token.</p>
-
-        <div>
-          <label className="text-xs font-semibold text-gray-400 block mb-1">Target (Topic name or Device Token)</label>
-          <input
-            type="text"
-            value={fcmTarget}
-            onChange={(e) => setFcmTarget(e.target.value)}
-            placeholder="announcements (or paste FCM device token)"
-            className="w-full px-3.5 py-2 bg-[#0d0f12] border border-[#262b36] rounded-lg text-sm text-white font-mono text-xs"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Card 1: In-App Announcement */}
+        <div className="p-6 bg-[#12131b] border border-white/[0.06] rounded-2xl shadow-sm flex flex-col justify-between">
           <div>
-            <label className="text-xs font-semibold text-gray-400 block mb-1">Push Title</label>
-            <input
-              type="text"
-              value={fcmTitle}
-              onChange={(e) => setFcmTitle(e.target.value)}
-              className="w-full px-3.5 py-2 bg-[#0d0f12] border border-[#262b36] rounded-lg text-sm text-white"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-400 block mb-1">Push Body</label>
-            <input
-              type="text"
-              value={fcmBody}
-              onChange={(e) => setFcmBody(e.target.value)}
-              className="w-full px-3.5 py-2 bg-[#0d0f12] border border-[#262b36] rounded-lg text-sm text-white"
-            />
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/[0.04]">
+              <Radio className="w-4 h-4 text-indigo-400" />
+              <h2 className="text-sm font-bold text-white">Create In-App Banner</h2>
+            </div>
+
+            {announcementSuccess && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
+                <span>Announcement published to active listeners!</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitAnnouncement} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Announcement Title
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Melo V2 Cloud Sync Live"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Severity Level
+                </label>
+                <select
+                  value={severity}
+                  onChange={(e) => setSeverity(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="info">Info (Standard Announcement)</option>
+                  <option value="warning">Warning (Maintenance Alert)</option>
+                  <option value="critical">Critical (Urgent Security Notice)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Announcement Body
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Details visible to listeners inside the Melo notifications feed..."
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+                <span>{saving ? 'Publishing...' : 'Publish Announcement'}</span>
+              </button>
+            </form>
           </div>
         </div>
 
-        <div className="pt-2">
-          <button
-            type="submit"
-            disabled={fcmSending}
-            className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-500 transition-colors"
-          >
-            {fcmSending ? 'Sending via FCM...' : 'Send Direct Push Notification'}
-          </button>
+        {/* Card 2: FCM Push Broadcast */}
+        <div className="p-6 bg-[#12131b] border border-white/[0.06] rounded-2xl shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/[0.04]">
+              <BellRing className="w-4 h-4 text-violet-400" />
+              <h2 className="text-sm font-bold text-white">Broadcast FCM Push Notification</h2>
+            </div>
+
+            {fcmSuccess && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
+                <span>Push notification sent to Firebase Cloud Messaging!</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSendFCM} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Notification Title
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={fcmTitle}
+                  onChange={(e) => setFcmTitle(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Target Topic / Device Token
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="announcements or direct device FCM token"
+                  value={fcmTarget}
+                  onChange={(e) => setFcmTarget(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-violet-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Push Notification Message
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={fcmBody}
+                  onChange={(e) => setFcmBody(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={fcmSending}
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-medium text-xs shadow-md shadow-violet-600/30 flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+                <span>{fcmSending ? 'Broadcasting via FCM...' : 'Broadcast FCM Push'}</span>
+              </button>
+            </form>
+          </div>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

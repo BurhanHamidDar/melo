@@ -193,43 +193,15 @@ func (h *UserHandler) RegisterDevice(w http.ResponseWriter, r *http.Request) {
 		platform = "android"
 	}
 
-	if h.DB != nil && h.DB.Pool != nil {
-		query := `
-			INSERT INTO user_devices (
-				user_id, device_install_id, platform, app_version_code, app_version_name,
-				device_label, fcm_token, notifications_enabled, last_seen_at, updated_at
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-			ON CONFLICT (user_id, device_install_id) DO UPDATE SET
-				platform = EXCLUDED.platform,
-				app_version_code = EXCLUDED.app_version_code,
-				app_version_name = EXCLUDED.app_version_name,
-				device_label = EXCLUDED.device_label,
-				fcm_token = EXCLUDED.fcm_token,
-				notifications_enabled = EXCLUDED.notifications_enabled,
-				last_seen_at = NOW(),
-				updated_at = NOW()
-			RETURNING id, user_id, device_install_id, platform, app_version_code, app_version_name,
-			          device_label, fcm_token, notifications_enabled, last_seen_at, created_at, updated_at
-		`
-		var device models.UserDevice
-		err := h.DB.Pool.QueryRow(r.Context(), query,
-			user.ID, installUUID, platform, req.AppVersionCode, req.AppVersionName,
-			req.DeviceLabel, req.FCMToken, req.NotificationsEnabled,
-		).Scan(
-			&device.ID, &device.UserID, &device.DeviceInstallID, &device.Platform,
-			&device.AppVersionCode, &device.AppVersionName, &device.DeviceLabel,
-			&device.FCMToken, &device.NotificationsEnabled, &device.LastSeenAt,
-			&device.CreatedAt, &device.UpdatedAt,
-		)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to register device: "+err.Error())
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]interface{}{"device": device})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "registered"})
+	// user_devices table was dropped in migration 00004. Device registration is acknowledged.
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status": "registered",
+		"device": map[string]interface{}{
+			"user_id":           user.ID,
+			"device_install_id": installUUID,
+			"platform":          platform,
+		},
+	})
 }
 
 func (h *UserHandler) UnregisterDevice(w http.ResponseWriter, r *http.Request) {
@@ -246,15 +218,10 @@ func (h *UserHandler) UnregisterDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.DB != nil && h.DB.Pool != nil {
-		_, err := h.DB.Pool.Exec(r.Context(), "DELETE FROM user_devices WHERE user_id = $1 AND device_install_id = $2", user.ID, installUUID)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to unregister device")
-			return
-		}
-	}
-
-	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "unregistered"})
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":            "unregistered",
+		"device_install_id": installUUID,
+	})
 }
 
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {

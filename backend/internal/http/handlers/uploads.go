@@ -92,14 +92,7 @@ func (h *UploadHandler) CreatePresignedURL(w http.ResponseWriter, r *http.Reques
 		uploadURL = fmt.Sprintf("%s/v1/uploads/direct/%s", h.Cfg.PublicAPIBaseURL, objectKey)
 	}
 
-	if h.DB != nil && h.DB.Pool != nil {
-		query := `
-			INSERT INTO media_assets (id, owner_user_id, asset_type, bucket_name, object_key, visibility, content_type, byte_size, status)
-			VALUES ($1, $2, $3, $4, $5, 'public', $6, $7, 'pending')
-		`
-		_, _ = h.DB.Pool.Exec(r.Context(), query, assetID, user.ID, req.AssetType, h.Cfg.R2ImagesBucket, objectKey, req.ContentType, req.ByteSize)
-	}
-
+	// media_assets table was dropped in migration 00004. R2 presigned URLs work directly with object keys.
 	writeJSON(w, http.StatusOK, PresignResponse{
 		AssetID:   assetID,
 		UploadURL: uploadURL,
@@ -123,23 +116,7 @@ func (h *UploadHandler) CompleteUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var objectKey string
-	if h.DB != nil && h.DB.Pool != nil {
-		query := `
-			UPDATE media_assets
-			SET status = 'active', updated_at = NOW()
-			WHERE id = $1 AND owner_user_id = $2
-			RETURNING object_key
-		`
-		err := h.DB.Pool.QueryRow(r.Context(), query, req.AssetID, user.ID).Scan(&objectKey)
-		if err != nil {
-			writeError(w, http.StatusNotFound, "ASSET_NOT_FOUND", "Asset not found or unauthorized")
-			return
-		}
-	} else {
-		objectKey = "avatar/" + user.ID.String() + "/" + req.AssetID.String() + ".jpg"
-	}
-
+	objectKey := fmt.Sprintf("avatar/%s/%s.jpg", user.ID.String(), req.AssetID.String())
 	publicURL := fmt.Sprintf("%s/%s", strings.TrimRight(h.Cfg.R2PublicImageBaseURL, "/"), objectKey)
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{

@@ -1,6 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import {
+  Flag,
+  ShieldAlert,
+  CheckCircle,
+  Clock,
+  X,
+  AlertTriangle,
+  RefreshCw,
+} from 'lucide-react';
 
 interface Report {
   id: string;
@@ -16,7 +25,6 @@ interface Report {
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [activeReport, setActiveReport] = useState<Report | null>(null);
   const [resolutionNote, setResolutionNote] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -30,245 +38,214 @@ export default function ReportsPage() {
     try {
       const res = await fetch('http://localhost:8080/v1/admin/reports', {
         headers: {
-          'Authorization': 'Bearer ' + (localStorage.getItem('melo_admin_token') || 'dev-test-token'),
+          Authorization:
+            'Bearer ' + (localStorage.getItem('melo_admin_token') || 'dev-test-token'),
         },
       });
       if (res.ok) {
         const data = await res.json();
         setReports(data.reports || []);
       } else {
-        // Fallback demo reports if backend not running
-        setReports([
-          {
-            id: 'rep-001',
-            target_type: 'playlist',
-            target_id: 'pl-992-abc',
-            reason: 'Inappropriate or spam playlist title',
-            details: 'Title contains repetitive commercial promotion links.',
-            status: 'open',
-            created_at: new Date(Date.now() - 3600000).toISOString(),
-          },
-          {
-            id: 'rep-002',
-            target_type: 'profile',
-            target_id: 'usr-441-xyz',
-            reason: 'Impersonation of school club',
-            details: 'Account claims to be official department representative.',
-            status: 'reviewing',
-            created_at: new Date(Date.now() - 86400000).toISOString(),
-          },
-        ]);
+        setReports([]);
       }
     } catch {
-      setReports([
-        {
-          id: 'rep-001',
-          target_type: 'playlist',
-          target_id: 'pl-992-abc',
-          reason: 'Inappropriate or spam playlist title',
-          details: 'Title contains repetitive commercial promotion links.',
-          status: 'open',
-          created_at: new Date(Date.now() - 3600000).toISOString(),
-        },
-      ]);
+      setReports([]);
     } finally {
       setLoading(false);
     }
   }
 
-  async function updateStatus(reportId: string, newStatus: string) {
+  async function updateStatus(id: string, status: string) {
     setActionLoading(true);
     try {
-      const res = await fetch(`http://localhost:8080/v1/admin/reports/${reportId}`, {
+      await fetch(`http://localhost:8080/v1/admin/reports/${id}`, {
         method: 'PATCH',
         headers: {
+          Authorization:
+            'Bearer ' + (localStorage.getItem('melo_admin_token') || 'dev-test-token'),
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + (localStorage.getItem('melo_admin_token') || 'dev-test-token'),
         },
-        body: JSON.stringify({
-          status: newStatus,
-          resolution_note: resolutionNote || undefined,
-        }),
+        body: JSON.stringify({ status, resolution_note: resolutionNote }),
       });
-
-      if (res.ok || true) {
-        setReports((prev) =>
-          prev.map((r) =>
-            r.id === reportId ? { ...r, status: newStatus as any } : r
-          )
-        );
-        setActiveReport(null);
-        setResolutionNote('');
-      }
-    } catch (e) {
-      alert('Failed to update status');
+      setActiveReport(null);
+      setResolutionNote('');
+      fetchReports();
+    } catch (err: any) {
+      alert(err.message || 'Action failed');
     } finally {
       setActionLoading(false);
     }
   }
 
-  const filteredReports = statusFilter === 'all'
-    ? reports
-    : reports.filter((r) => r.status === statusFilter);
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'open':
-        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case 'reviewing':
-        return 'bg-sky-500/10 text-sky-400 border-sky-500/20';
-      case 'resolved':
-        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'dismissed':
-        return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
-      default:
-        return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
-    }
-  };
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Community Moderation Queue</h1>
-          <p className="text-sm text-gray-400">Review reported playlists, member profiles, and community content.</p>
+          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <Flag className="w-5 h-5 text-indigo-400" />
+            <span>Moderation & Abuse Reports</span>
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Community flags, inappropriate metadata, and user reports queue
+          </p>
         </div>
 
-        <div className="flex items-center space-x-2">
-          {['all', 'open', 'reviewing', 'resolved', 'dismissed'].map((status) => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg capitalize border transition-colors ${
-                statusFilter === status
-                  ? 'bg-[#ff3b5c] text-white border-[#ff3b5c]'
-                  : 'bg-[#1e232d] text-gray-400 border-[#2b3240] hover:text-white'
-              }`}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
+        <button
+          onClick={fetchReports}
+          className="px-3.5 py-1.5 rounded-xl bg-[#141620] hover:bg-[#1c1e2b] border border-white/[0.08] text-xs font-medium text-slate-300 flex items-center gap-2 transition cursor-pointer"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
+          <span>Refresh Queue</span>
+        </button>
       </div>
 
-      <div className="bg-[#161a22] border border-[#262b36] rounded-xl overflow-hidden shadow-sm">
-        {loading ? (
-          <div className="p-12 text-center text-gray-400 text-sm">Loading moderation reports...</div>
-        ) : filteredReports.length === 0 ? (
-          <div className="p-12 text-center text-gray-400 text-sm">No reports found matching the selected filter.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-[#262b36] bg-[#1a1f29] text-gray-400 font-mono text-xs">
-                  <th className="p-4">Target Type</th>
-                  <th className="p-4">Reason & Details</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Reported At</th>
-                  <th className="p-4 text-right">Actions</th>
+      {/* Reports Table */}
+      <div className="bg-[#12131b] border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-white/[0.04]">
+            <thead className="bg-[#161723]">
+              <tr>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Target Type
+                </th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Reason & Details
+                </th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Reported
+                </th>
+                <th className="px-5 py-3 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-xs text-slate-400">
+                    <div className="flex items-center justify-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" />
+                      <span>Loading moderation reports...</span>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-[#262b36]">
-                {filteredReports.map((r) => (
-                  <tr key={r.id} className="hover:bg-[#1a202c]/50 transition-colors">
-                    <td className="p-4 align-top">
-                      <span className="inline-block px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wider bg-[#222938] text-gray-300 border border-[#2e374a]">
+              ) : reports.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-xs text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-1.5">
+                      <CheckCircle className="w-6 h-6 text-emerald-400" />
+                      <span className="font-semibold text-slate-200">Moderation Queue Clear</span>
+                      <span className="text-[11px] text-slate-500">No open reports from community listeners.</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                reports.map((r) => (
+                  <tr key={r.id} className="hover:bg-white/[0.02] transition">
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 capitalize">
                         {r.target_type}
                       </span>
-                      {r.target_id && (
-                        <p className="text-[11px] font-mono text-gray-500 mt-1 truncate max-w-[120px]">
-                          {r.target_id}
-                        </p>
-                      )}
                     </td>
-                    <td className="p-4 align-top max-w-md">
-                      <p className="font-semibold text-gray-200">{r.reason}</p>
+                    <td className="px-5 py-3.5">
+                      <div className="text-xs font-semibold text-white">{r.reason}</div>
                       {r.details && (
-                        <p className="text-xs text-gray-400 mt-1 line-clamp-2">{r.details}</p>
+                        <div className="text-[11px] text-slate-400 truncate max-w-xs">{r.details}</div>
                       )}
                     </td>
-                    <td className="p-4 align-top">
-                      <span className={`inline-block px-2.5 py-1 rounded text-xs font-medium border ${getStatusBadge(r.status)}`}>
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <span
+                        className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${
+                          r.status === 'open'
+                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                            : r.status === 'resolved'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                        }`}
+                      >
                         {r.status}
                       </span>
                     </td>
-                    <td className="p-4 align-top text-xs text-gray-400 font-mono">
-                      {new Date(r.created_at).toLocaleString()}
+                    <td className="px-5 py-3.5 whitespace-nowrap text-[11px] font-mono text-slate-400">
+                      {new Date(r.created_at).toLocaleDateString()}
                     </td>
-                    <td className="p-4 align-top text-right space-x-2">
+                    <td className="px-5 py-3.5 whitespace-nowrap text-right">
                       <button
                         onClick={() => setActiveReport(r)}
-                        className="px-2.5 py-1 text-xs font-medium bg-[#222938] hover:bg-[#2c3548] text-gray-200 rounded border border-[#333d52] transition-colors"
+                        className="px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-xs font-medium text-slate-200 transition cursor-pointer"
                       >
-                        Action
+                        Review
                       </button>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Action Modal */}
+      {/* Review Modal */}
       {activeReport && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1a1f29] border border-[#2b3342] rounded-xl max-w-md w-full p-6 space-y-4 shadow-xl">
-            <h3 className="text-lg font-bold text-white">Moderate Report</h3>
-            <p className="text-sm text-gray-300">
-              <span className="font-medium text-gray-400">Target:</span> {activeReport.target_type} ({activeReport.target_id || 'N/A'})
-            </p>
-            <p className="text-sm text-gray-300">
-              <span className="font-medium text-gray-400">Reason:</span> {activeReport.reason}
-            </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-[#141620] border border-white/[0.1] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-amber-400" />
+                <span>Resolve Community Report</span>
+              </h3>
+              <button
+                onClick={() => setActiveReport(null)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-            <div className="space-y-1">
-              <label className="text-xs text-gray-400 font-medium">Resolution Note (Optional)</label>
+            <div>
+              <span className="text-[11px] text-slate-400">Reason:</span>
+              <p className="text-xs font-medium text-white">{activeReport.reason}</p>
+            </div>
+
+            {activeReport.details && (
+              <div>
+                <span className="text-[11px] text-slate-400">Details:</span>
+                <p className="text-xs text-slate-300">{activeReport.details}</p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Moderator Resolution Note
+              </label>
               <textarea
+                rows={3}
                 value={resolutionNote}
                 onChange={(e) => setResolutionNote(e.target.value)}
-                placeholder="Explain the moderation action taken..."
-                className="w-full bg-[#13161c] border border-[#28303f] rounded-lg p-2.5 text-sm text-gray-200 focus:outline-none focus:border-[#ff3b5c]"
-                rows={3}
+                placeholder="Audit notes on why this was resolved or dismissed..."
+                className="w-full px-3 py-2 bg-[#0e0f15] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               />
             </div>
 
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex justify-end gap-2 pt-2">
               <button
-                type="button"
-                onClick={() => setActiveReport(null)}
-                className="px-4 py-2 text-sm text-gray-400 hover:text-white"
+                onClick={() => updateStatus(activeReport.id, 'dismissed')}
+                disabled={actionLoading}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition"
               >
-                Cancel
+                Dismiss
               </button>
-
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  disabled={actionLoading}
-                  onClick={() => updateStatus(activeReport.id, 'dismissed')}
-                  className="px-3 py-1.5 text-xs font-medium bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors"
-                >
-                  Dismiss
-                </button>
-                <button
-                  type="button"
-                  disabled={actionLoading}
-                  onClick={() => updateStatus(activeReport.id, 'reviewing')}
-                  className="px-3 py-1.5 text-xs font-medium bg-sky-600 hover:bg-sky-500 text-white rounded-lg transition-colors"
-                >
-                  Reviewing
-                </button>
-                <button
-                  type="button"
-                  disabled={actionLoading}
-                  onClick={() => updateStatus(activeReport.id, 'resolved')}
-                  className="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
-                >
-                  Resolve
-                </button>
-              </div>
+              <button
+                onClick={() => updateStatus(activeReport.id, 'resolved')}
+                disabled={actionLoading}
+                className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-medium text-white shadow-md transition"
+              >
+                Resolve & Close
+              </button>
             </div>
           </div>
         </div>
