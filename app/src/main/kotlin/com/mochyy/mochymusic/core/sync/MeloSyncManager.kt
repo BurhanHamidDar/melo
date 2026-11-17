@@ -168,9 +168,150 @@ class MeloSyncManager @Inject constructor(
                 }
             }
 
+            // 2. Pull remote changes from backend FIRST so local state is fully up to date
+            val currentCursor = if (forceFullPull) 0L else prefs.getLong("sync_cursor", 0L)
+            val pullEndpoint = "$workingBaseUrl/v1/sync/pull?cursor=$currentCursor&limit=100"
+            val pullConn = (URL(pullEndpoint).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 6_000
+                readTimeout = 6_000
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Accept", "application/json")
+            }
+
+            try {
+                val code = pullConn.responseCode
+                if (code in 200..299) {
+                    val respStr = pullConn.inputStream.bufferedReader().use { it.readText() }
+                    val respJson = JSONObject(respStr)
+                    val nextCursor = respJson.optLong("next_cursor", currentCursor)
+                    val mutationsArr = respJson.optJSONArray("mutations")
+
+                    if (mutationsArr != null && mutationsArr.length() > 0) {
+                        for (i in 0 until mutationsArr.length()) {
+                            val m = mutationsArr.getJSONObject(i)
+                            val entityType = m.optString("entity_type")
+                            val operation = m.optString("operation", "upsert")
+                            val payload = m.optJSONObject("payload") ?: continue
+
+                            when (entityType) {
+                                "playlist" -> {
+                                    val playlistId = payload.optString("playlist_id").ifBlank { m.optString("entity_id") }
+                                    if (operation == "delete") {
+                                        if (playlistId.isNotBlank()) {
+                                            val existing = database.playlistEntity(playlistId)
+                                            if (existing != null) {
+                                                database.delete(existing)
+                                            }
+                                            database.clearPlaylist(playlistId)
+                                        }
+                                        continue
+                                    }
+
+                                    val name = payload.optString("name")
+                                    val desc = payload.optString("description")
+                                    val thumb = payload.optString("thumbnail_url")
+                                    val tracks = payload.optJSONArray("tracks")
+
+                                    if (playlistId.isNotBlank() && name.isNotBlank()) {
+                                        database.withTransaction {
+                                            val existingPlaylist = database.playlistEntity(playlistId)
+                                            val localThumb = if (existingPlaylist?.thumbnailUrl?.isNotBlank() == true) {
+                                                existingPlaylist.thumbnailUrl
+                                            } else if (thumb.startsWith("http")) {
+                                                thumb
+                                            } else {
+                                                null
+                                            }
+                                            val playlist = PlaylistEntity(
+                                                id = playlistId,
+                                                name = name,
+                                                description = desc.ifBlank { existingPlaylist?.description },
+                                                thumbnailUrl = localThumb,
+                                                isAutoSync = true,
+                                                isEditable = true,
+                                                isLocal = false,
+                                                bookmarkedAt = existingPlaylist?.bookmarkedAt ?: LocalDateTime.now(),
+                                                createdAt = existingPlaylist?.createdAt ?: LocalDateTime.now(),
+                                                lastUpdateTime = LocalDateTime.now(),
+                                            )
+                                            database.upsert(playlist)
+
+                                            if (tracks != null) {
+                                                database.clearPlaylist(playlistId)
+                                                for (t in 0 until tracks.length()) {
+                                                    val track = tracks.getJSONObject(t)
+                                                    val songId = track.optString("song_id")
+                                                    val songTitle = track.optString("title").ifBlank { "Track ${t + 1}" }
+                                                    val duration = track.optInt("duration", -1)
+                                                    val songThumb = track.optString("thumbnail_url")
+                                                    val albumName = track.optString("album_name")
+                                                    val position = track.optInt("position", t)
+
+                                                    if (songId.isNotBlank()) {
+                                                        val existingSong = database.songEntity(songId)
+                                                        val wasLiked = existingSong?.liked ?: false
+                                                        val song = SongEntity(
+                                                            id = songId,
+                                                            title = songTitle,
+                                                            duration = duration,
+                                                            thumbnailUrl = songThumb.ifBlank { existingSong?.thumbnailUrl },
+                                                            albumName = albumName.ifBlank { existingSong?.albumName },
+                                                            liked = wasLiked,
+                                                            likedDate = existingSong?.likedDate,
+                                                            totalPlayTime = existingSong?.totalPlayTime ?: 0,
+                                                            inLibrary = if (wasLiked) existingSong?.inLibrary else null,
+                                                        )
+                                                        database.upsert(song)
+
+                                                        database.insert(
+                                                            PlaylistSongMap(
+                                                                playlistId = playlistId,
+                                                                songId = songId,
+                                                                position = position,
+                                                            )
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                "library_item", "liked_song" -> {
+                                    val songId = payload.optString("song_id")
+                                    val title = payload.optString("title")
+                                    val isLiked = payload.optBoolean("is_liked", true)
+                                    if (songId.isNotBlank()) {
+                                        val existingSong = database.songEntity(songId)
+                                        val song = SongEntity(
+                                            id = songId,
+                                            title = title.ifBlank { existingSong?.title ?: "Liked Song" },
+                                            duration = existingSong?.duration ?: -1,
+                                            thumbnailUrl = existingSong?.thumbnailUrl,
+                                            albumName = existingSong?.albumName,
+                                            liked = isLiked,
+                                            likedDate = if (isLiked) (existingSong?.likedDate ?: LocalDateTime.now()) else null,
+                                            totalPlayTime = existingSong?.totalPlayTime ?: 0,
+                                            inLibrary = if (isLiked) (existingSong?.inLibrary ?: LocalDateTime.now()) else existingSong?.inLibrary,
+                                        )
+                                        database.upsert(song)
+                                    }
+                                }
+                            }
+                        }
+                        database.invalidationTracker.refreshVersionsAsync()
+                    }
+
+                    if (nextCursor > 0) {
+                        prefs.edit().putLong("sync_cursor", nextCursor).apply()
+                    }
+                }
+            } finally {
+                pullConn.disconnect()
+            }
+
             val readableDb = database.openHelper.readableDatabase
 
-            // 2. Gather local liked songs & playlists to push
+            // 3. Gather local liked songs & playlists to push (only after remote pull)
             val mutations = JSONArray()
 
             // Collect liked songs
@@ -282,7 +423,7 @@ class MeloSyncManager @Inject constructor(
                 }
             }
 
-            // 3. Push mutations to backend /v1/sync/push
+            // 4. Push local changes to backend /v1/sync/push
             if (mutations.length() > 0) {
                 val pushEndpoint = "$workingBaseUrl/v1/sync/push"
                 val pushConn = (URL(pushEndpoint).openConnection() as HttpURLConnection).apply {
@@ -300,149 +441,13 @@ class MeloSyncManager @Inject constructor(
                     pushConn.outputStream.bufferedWriter().use { it.write(body) }
                     val code = pushConn.responseCode
                     if (code in 200..299) {
-                        val respStr = pushConn.inputStream.bufferedReader().use { it.readText() }
-                        val respJson = JSONObject(respStr)
-                        val cursor = respJson.optLong("current_cursor", 0L)
-                        if (cursor > 0) {
-                            prefs.edit().putLong("sync_cursor", cursor).apply()
-                        }
+                        Timber.d("Sync push successful ($code)")
                     } else {
                         Timber.w("Sync push returned code $code")
                     }
                 } finally {
                     pushConn.disconnect()
                 }
-            }
-
-            // 4. Pull remote changes from backend /v1/sync/pull
-            val currentCursor = if (forceFullPull) 0L else prefs.getLong("sync_cursor", 0L)
-            val pullEndpoint = "$workingBaseUrl/v1/sync/pull?cursor=$currentCursor&limit=100"
-            val pullConn = (URL(pullEndpoint).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 6_000
-                readTimeout = 6_000
-                setRequestProperty("Authorization", "Bearer $token")
-                setRequestProperty("Accept", "application/json")
-            }
-
-            try {
-                val code = pullConn.responseCode
-                if (code in 200..299) {
-                    val respStr = pullConn.inputStream.bufferedReader().use { it.readText() }
-                    val respJson = JSONObject(respStr)
-                    val nextCursor = respJson.optLong("next_cursor", currentCursor)
-                    val mutationsArr = respJson.optJSONArray("mutations")
-
-                    if (mutationsArr != null && mutationsArr.length() > 0) {
-                        for (i in 0 until mutationsArr.length()) {
-                            val m = mutationsArr.getJSONObject(i)
-                            val entityType = m.optString("entity_type")
-                            val operation = m.optString("operation", "upsert")
-                            val payload = m.optJSONObject("payload") ?: continue
-
-                            when (entityType) {
-                                "playlist" -> {
-                                    val playlistId = payload.optString("playlist_id").ifBlank { m.optString("entity_id") }
-                                    if (operation == "delete") {
-                                        if (playlistId.isNotBlank()) {
-                                            val existing = database.playlistEntity(playlistId)
-                                            if (existing != null) {
-                                                database.delete(existing)
-                                            }
-                                            database.clearPlaylist(playlistId)
-                                        }
-                                        continue
-                                    }
-
-                                    val name = payload.optString("name")
-                                    val desc = payload.optString("description")
-                                    val thumb = payload.optString("thumbnail_url")
-                                    val tracks = payload.optJSONArray("tracks")
-
-                                    if (playlistId.isNotBlank() && name.isNotBlank()) {
-                                        val existingPlaylist = database.playlistEntity(playlistId)
-                                        val playlist = PlaylistEntity(
-                                            id = playlistId,
-                                            name = name,
-                                            description = desc.ifBlank { existingPlaylist?.description },
-                                            thumbnailUrl = thumb.ifBlank { existingPlaylist?.thumbnailUrl },
-                                            isAutoSync = true,
-                                            isEditable = true,
-                                            isLocal = false,
-                                            bookmarkedAt = existingPlaylist?.bookmarkedAt ?: LocalDateTime.now(),
-                                            createdAt = existingPlaylist?.createdAt ?: LocalDateTime.now(),
-                                            lastUpdateTime = LocalDateTime.now(),
-                                        )
-                                        database.upsert(playlist)
-
-                                        if (tracks != null) {
-                                            database.clearPlaylist(playlistId)
-                                            for (t in 0 until tracks.length()) {
-                                                val track = tracks.getJSONObject(t)
-                                                val songId = track.optString("song_id")
-                                                val songTitle = track.optString("title").ifBlank { "Track ${t + 1}" }
-                                                val duration = track.optInt("duration", -1)
-                                                val songThumb = track.optString("thumbnail_url")
-                                                val albumName = track.optString("album_name")
-                                                val position = track.optInt("position", t)
-
-                                                if (songId.isNotBlank()) {
-                                                    val existingSong = database.songEntity(songId)
-                                                    val song = SongEntity(
-                                                        id = songId,
-                                                        title = songTitle,
-                                                        duration = duration,
-                                                        thumbnailUrl = songThumb.ifBlank { existingSong?.thumbnailUrl },
-                                                        albumName = albumName.ifBlank { existingSong?.albumName },
-                                                        liked = existingSong?.liked ?: false,
-                                                        likedDate = existingSong?.likedDate,
-                                                        totalPlayTime = existingSong?.totalPlayTime ?: 0,
-                                                        inLibrary = existingSong?.inLibrary ?: LocalDateTime.now(),
-                                                    )
-                                                    database.upsert(song)
-
-                                                    database.insert(
-                                                        PlaylistSongMap(
-                                                            playlistId = playlistId,
-                                                            songId = songId,
-                                                            position = position,
-                                                        )
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                "library_item", "liked_song" -> {
-                                    val songId = payload.optString("song_id")
-                                    val title = payload.optString("title")
-                                    val isLiked = payload.optBoolean("is_liked", true)
-                                    if (songId.isNotBlank()) {
-                                        val existingSong = database.songEntity(songId)
-                                        val song = SongEntity(
-                                            id = songId,
-                                            title = title.ifBlank { existingSong?.title ?: "Liked Song" },
-                                            duration = existingSong?.duration ?: -1,
-                                            thumbnailUrl = existingSong?.thumbnailUrl,
-                                            albumName = existingSong?.albumName,
-                                            liked = isLiked,
-                                            likedDate = if (isLiked) (existingSong?.likedDate ?: LocalDateTime.now()) else null,
-                                            totalPlayTime = existingSong?.totalPlayTime ?: 0,
-                                            inLibrary = existingSong?.inLibrary ?: LocalDateTime.now(),
-                                        )
-                                        database.upsert(song)
-                                    }
-                                }
-                            }
-                        }
-                        database.invalidationTracker.refreshVersionsAsync()
-                    }
-
-                    if (nextCursor > 0) {
-                        prefs.edit().putLong("sync_cursor", nextCursor).apply()
-                    }
-                }
-            } finally {
-                pullConn.disconnect()
             }
 
             val formattedTime = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())

@@ -65,6 +65,9 @@ class App : Application(), SingletonImageLoader.Factory {
     @Inject
     lateinit var phoneLink: dagger.Lazy<com.mochyy.mochymusic.link.phone.PhoneLinkHost>
 
+    @Inject
+    lateinit var meloSyncManager: dagger.Lazy<com.mochyy.mochymusic.core.sync.MeloSyncManager>
+
     override fun onCreate() {
         // before super, because that's where hilt builds the database and the player caches
         com.mochyy.mochymusic.importer.transfer.TransferRestore.applyPending(this)
@@ -167,6 +170,12 @@ class App : Application(), SingletonImageLoader.Factory {
             com.mochyy.mochymusic.ui.launch.LaunchGate.awaitIntro()
             runCatching { com.mochyy.mochymusic.importer.LocalArtwork.repair(this@App, musicDatabase) }
                 .onFailure { Timber.w(it, "Repairing local covers failed") }
+        }
+
+        applicationScope.launch(Dispatchers.IO) {
+            com.mochyy.mochymusic.ui.launch.LaunchGate.awaitIntro()
+            runCatching { meloSyncManager.get().syncNow() }
+                .onFailure { Timber.d(it, "Startup cloud sync skipped") }
         }
     }
 

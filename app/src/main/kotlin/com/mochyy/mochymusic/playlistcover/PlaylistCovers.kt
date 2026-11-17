@@ -516,7 +516,12 @@ object PlaylistCovers {
         artworkUrl: String?,
     ) {
         val made = PlaylistCoverStore.parse(playlist.thumbnailUrl) ?: return
-        if (made.sourceKey == PlaylistCoverStore.sourceKey(topSongId) &&
+        val localFile = playlist.thumbnailUrl?.let { url ->
+            if (url.startsWith("file://")) java.io.File(Uri.parse(url).path ?: "") else null
+        }
+        val fileExists = localFile?.exists() ?: true
+        if (fileExists &&
+            made.sourceKey == PlaylistCoverStore.sourceKey(topSongId) &&
             made.titleKey == PlaylistCoverStore.titleKey(playlist.name)
         ) return
 
