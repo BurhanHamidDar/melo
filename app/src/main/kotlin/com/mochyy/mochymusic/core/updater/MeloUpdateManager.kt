@@ -65,7 +65,7 @@ object MeloUpdateManager {
                 )
             }
         } else {
-            listOf("https://api.burhanhamid.in", "https://api.melo.app")
+            listOf("https://api.burhanhamid.in", "https://api.applicoda.in", "https://api.melo.app")
         }
 
     private val _updateState = MutableStateFlow<MeloReleaseInfo?>(null)
