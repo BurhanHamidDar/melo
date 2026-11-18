@@ -150,6 +150,19 @@ export async function updateUserStatus(userId: string, status: string, reason: s
   if (!res.ok) throw new Error('Failed to update user status');
 }
 
+export async function getReleases(): Promise<{ releases: AppRelease[] }> {
+  const res = await fetchWithAuth('/v1/admin/releases');
+  if (!res.ok) throw new Error('Failed to load releases');
+  return res.json();
+}
+
+export async function unlockRelease(id: string): Promise<void> {
+  const res = await fetchWithAuth(`/v1/admin/releases/${id}/unlock`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to unlock release');
+}
+
 export async function createRelease(release: Partial<AppRelease>): Promise<AppRelease> {
   const res = await fetchWithAuth('/v1/admin/releases', {
     method: 'POST',

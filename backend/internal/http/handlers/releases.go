@@ -159,7 +159,7 @@ func (h *ReleaseHandler) LandingStatus(w http.ResponseWriter, r *http.Request) {
 			       status, is_landing_primary, scheduled_release_at, COALESCE(r2_object_key, '')
 			FROM app_releases
 			WHERE platform = 'android'
-			ORDER BY is_landing_primary DESC, created_at DESC
+			ORDER BY is_landing_primary DESC, version_code DESC, created_at DESC
 			LIMIT 1
 		`
 		var r2Key string

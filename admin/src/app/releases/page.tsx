@@ -1,40 +1,110 @@
 'use client';
 
-import React, { useState } from 'react';
-import { createRelease } from '@/lib/api';
+import React, { useState, useEffect } from 'react';
+import { createRelease, getReleases, unlockRelease, AppRelease } from '@/lib/api';
 import {
   Smartphone,
   UploadCloud,
   CheckCircle,
-  ShieldCheck,
   AlertCircle,
   Clock,
   Lock,
   Sparkles,
-  Layers,
-  Calendar,
   Cloud,
+  Unlock,
+  Radio,
+  RefreshCw,
+  Globe,
 } from 'lucide-react';
 
 export default function ReleasesPage() {
+  const [releases, setReleases] = useState<AppRelease[]>([]);
+  const [loadingReleases, setLoadingReleases] = useState(true);
+
   const [channel, setChannel] = useState('stable');
-  const [versionCode, setVersionCode] = useState('14');
-  const [versionName, setVersionName] = useState('2.0.0');
+  const [versionCode, setVersionCode] = useState('16');
+  const [versionName, setVersionName] = useState('2.0.1');
   const [minSupported, setMinSupported] = useState('12');
   const [downloadUrl, setDownloadUrl] = useState('');
   const [r2ObjectKey, setR2ObjectKey] = useState('');
-  const [sha256, setSha256] = useState('');
+  const [sha256, setSha256] = useState('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
   const [releaseNotes, setReleaseNotes] = useState('');
   const [mandatory, setMandatory] = useState(false);
   const [isLandingPrimary, setIsLandingPrimary] = useState(true);
 
   // Release Timing: 'immediate' | 'scheduled'
-  const [timingMode, setTimingMode] = useState<'immediate' | 'scheduled'>('immediate');
+  const [timingMode, setTimingMode] = useState<'immediate' | 'scheduled'>('scheduled');
   const [scheduledAt, setScheduledAt] = useState('');
 
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [timeZoneName, setTimeZoneName] = useState('');
+
+  useEffect(() => {
+    try {
+      setTimeZoneName(Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local Time');
+    } catch {
+      setTimeZoneName('Local Time');
+    }
+    loadReleases();
+  }, []);
+
+  const loadReleases = async () => {
+    setLoadingReleases(true);
+    try {
+      const data = await getReleases();
+      if (data && data.releases) {
+        setReleases(data.releases);
+      }
+    } catch (err: any) {
+      console.error('Failed to load releases', err);
+    } finally {
+      setLoadingReleases(false);
+    }
+  };
+
+  const handleQuickUnlock = async (id: string, name: string) => {
+    setActionLoadingId(id);
+    setError(null);
+    setSuccess(null);
+    try {
+      await unlockRelease(id);
+      setSuccess(`Release ${name} unlocked! It is now live and downloadable immediately.`);
+      await loadReleases();
+    } catch (err: any) {
+      setError(err.message || 'Failed to unlock release');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleSelectRelease = (rel: AppRelease) => {
+    setChannel(rel.channel || 'stable');
+    setVersionCode(String(rel.version_code));
+    setVersionName(rel.version_name);
+    setMinSupported(String(rel.min_supported_version_code || 12));
+    setDownloadUrl(rel.download_url || '');
+    setR2ObjectKey(rel.r2_object_key || '');
+    setSha256(rel.sha256 || '');
+    setReleaseNotes(rel.release_notes || '');
+    setMandatory(rel.mandatory || false);
+    setIsLandingPrimary(rel.is_landing_primary ?? true);
+
+    if (rel.scheduled_release_at) {
+      setTimingMode('scheduled');
+      const d = new Date(rel.scheduled_release_at);
+      // Format as YYYY-MM-DDTHH:mm in local time for datetime-local
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const localStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      setScheduledAt(localStr);
+    } else {
+      setTimingMode('immediate');
+      setScheduledAt('');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +120,7 @@ export default function ReleasesPage() {
 
     setSaving(true);
     setError(null);
-    setSuccess(false);
+    setSuccess(null);
 
     try {
       const scheduledIso = timingMode === 'scheduled' && scheduledAt ? new Date(scheduledAt).toISOString() : null;
@@ -70,7 +140,16 @@ export default function ReleasesPage() {
         is_landing_primary: isLandingPrimary,
         scheduled_release_at: scheduledIso,
       });
-      setSuccess(true);
+
+      setSuccess(
+        `Release v${versionName} (Build ${versionCode}) saved successfully! ${
+          timingMode === 'scheduled'
+            ? `Countdown active until ${new Date(scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${timeZoneName}).`
+            : 'Live now for immediate download.'
+        }`
+      );
+
+      await loadReleases();
     } catch (err: any) {
       setError(err.message || 'Failed to publish release');
     } finally {
@@ -78,25 +157,89 @@ export default function ReleasesPage() {
     }
   };
 
+  const scheduledRelease = releases.find((r) => r.scheduled_release_at && new Date(r.scheduled_release_at) > new Date());
+
   return (
     <div className="max-w-4xl space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-          <Smartphone className="w-5 h-5 text-indigo-400" />
-          <span>App Release Distribution & Countdown Scheduler</span>
-        </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
-          Publish live APK versions or schedule unbypassable countdown drops for the landing page and app clients
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <Smartphone className="w-5 h-5 text-indigo-400" />
+            <span>App Release Distribution & Countdown Scheduler</span>
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Manage live APK versions and schedule unbypassable countdown drops for the landing page
+          </p>
+        </div>
+
+        <button
+          onClick={loadReleases}
+          disabled={loadingReleases}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-medium text-slate-300 border border-white/[0.08] transition cursor-pointer"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 text-indigo-400 ${loadingReleases ? 'animate-spin' : ''}`} />
+          <span>Refresh Releases</span>
+        </button>
       </div>
+
+      {/* Active Scheduled Release Alert Card */}
+      {scheduledRelease && (
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-violet-950/60 via-[#18152e] to-[#12131f] border border-violet-500/30 space-y-3 shadow-lg shadow-violet-900/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-violet-400 animate-ping" />
+              <span className="text-xs font-bold uppercase tracking-wider text-violet-300">
+                Active Countdown Locked on Landing Page
+              </span>
+            </div>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-mono border border-violet-500/30">
+              v{scheduledRelease.version_name} (Build {scheduledRelease.version_code})
+            </span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+            <div>
+              <p className="text-sm font-semibold text-white flex items-center gap-2">
+                <Clock className="w-4 h-4 text-violet-400" />
+                <span>
+                  Target Unlock: {new Date(scheduledRelease.scheduled_release_at!).toLocaleDateString()} at{' '}
+                  {new Date(scheduledRelease.scheduled_release_at!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}{' '}
+                  <span className="text-xs text-slate-400 font-normal">({timeZoneName})</span>
+                </span>
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Landing page shows an unbypassable countdown timer. Direct downloads return HTTP 403 until this time.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleSelectRelease(scheduledRelease)}
+                className="px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] text-xs font-medium text-slate-200 transition cursor-pointer"
+              >
+                Reschedule Time
+              </button>
+
+              <button
+                type="button"
+                disabled={actionLoadingId === scheduledRelease.id}
+                onClick={() => handleQuickUnlock(scheduledRelease.id, scheduledRelease.version_name)}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium flex items-center gap-1.5 transition shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                <Unlock className="w-3.5 h-3.5" />
+                <span>{actionLoadingId === scheduledRelease.id ? 'Unlocking...' : 'Unlock Now (Go Live)'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {success && (
         <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2.5">
           <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-          <span>
-            Release v{versionName} ({channel}) successfully saved! {timingMode === 'scheduled' ? `Locked with server-side countdown until ${scheduledAt}` : 'Available for immediate download.'}
-          </span>
+          <span>{success}</span>
         </div>
       )}
 
@@ -107,7 +250,7 @@ export default function ReleasesPage() {
         </div>
       )}
 
-      {/* Form Card */}
+      {/* Main Release Form */}
       <form
         onSubmit={handleSubmit}
         className="p-6 bg-[#12131b] border border-white/[0.06] rounded-2xl space-y-6 shadow-sm"
@@ -131,7 +274,7 @@ export default function ReleasesPage() {
               <div>
                 <p className="text-xs font-semibold text-white">Instant Release</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  Downloads are immediately available to the public on the landing page and via in-app updates.
+                  Downloads are immediately available to the public on the landing page.
                 </p>
               </div>
             </button>
@@ -149,7 +292,7 @@ export default function ReleasesPage() {
               <div>
                 <p className="text-xs font-semibold text-white">Scheduled Countdown (Anti-Bypass)</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  Displays live countdown timer on landing page. API enforces HTTP 403 and omits download links until release time.
+                  Displays live countdown timer on landing page. API enforces HTTP 403 until release time.
                 </p>
               </div>
             </button>
@@ -159,9 +302,12 @@ export default function ReleasesPage() {
         {/* Scheduled Date/Time Picker */}
         {timingMode === 'scheduled' && (
           <div className="p-4 rounded-xl bg-violet-500/10 border border-violet-500/25 space-y-3">
-            <div className="flex items-center gap-2 text-violet-300 text-xs font-semibold">
-              <Lock className="w-4 h-4 text-violet-400" />
-              <span>Configure Target Launch Date & Time (UTC/Local)</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-violet-300 text-xs font-semibold">
+                <Lock className="w-4 h-4 text-violet-400" />
+                <span>Target Launch Date & Time ({timeZoneName})</span>
+              </div>
+              <span className="text-[10px] text-violet-300/80">Local Browser Time</span>
             </div>
             <div>
               <input
@@ -169,11 +315,11 @@ export default function ReleasesPage() {
                 required
                 value={scheduledAt}
                 onChange={(e) => setScheduledAt(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-[#171822] border border-violet-500/40 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-violet-400"
+                className="w-full px-3.5 py-2.5 bg-[#171822] border border-violet-500/40 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-violet-400 font-mono"
               />
             </div>
             <p className="text-[11px] text-violet-200/80 leading-relaxed">
-              🛡️ <b>Anti-Bypass Protection Enabled:</b> Until this timestamp expires, the server strictly withholds binary URLs and drops direct download attempts with HTTP 403 Forbidden.
+              🛡️ <b>Anti-Bypass Active:</b> The server withholds binary links and rejects downloads with HTTP 403 Forbidden until this exact moment in UTC.
             </p>
           </div>
         )}
@@ -196,14 +342,14 @@ export default function ReleasesPage() {
 
           <div>
             <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-              Version Code (Integer)
+              Version Code (Integer ID)
             </label>
             <input
               type="number"
               required
               value={versionCode}
               onChange={(e) => setVersionCode(e.target.value)}
-              className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
             />
           </div>
         </div>
@@ -216,7 +362,7 @@ export default function ReleasesPage() {
             <input
               type="text"
               required
-              placeholder="e.g. 2.0.0"
+              placeholder="e.g. 2.0.1"
               value={versionName}
               onChange={(e) => setVersionName(e.target.value)}
               className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -231,7 +377,7 @@ export default function ReleasesPage() {
               type="number"
               value={minSupported}
               onChange={(e) => setMinSupported(e.target.value)}
-              className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
             />
           </div>
         </div>
@@ -241,27 +387,24 @@ export default function ReleasesPage() {
           <div>
             <label className="text-xs font-semibold text-slate-300 block mb-1.5 flex items-center gap-1.5">
               <Cloud className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Cloudflare R2 Object Key (Recommended for Zero-Egress Storage)</span>
+              <span>Cloudflare R2 Object Key (Zero-Egress Storage)</span>
             </label>
             <input
               type="text"
-              placeholder="e.g. releases/melo-v2.0.0.apk"
+              placeholder="e.g. releases/melo-v2.0.1.apk"
               value={r2ObjectKey}
               onChange={(e) => setR2ObjectKey(e.target.value)}
               className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
             />
-            <p className="text-[11px] text-slate-500 mt-1">
-              If provided, the Go backend generates secure 15-minute presigned GET URLs from your private R2 bucket once unlocked.
-            </p>
           </div>
 
           <div>
             <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-              Fallback / Direct APK Download URL
+              Direct / Fallback Download URL
             </label>
             <input
               type="url"
-              placeholder="https://github.com/BurhanHamidDar/melo/releases/download/.../melo-universal.apk"
+              placeholder="https://github.com/BurhanHamidDar/melo/releases/latest"
               value={downloadUrl}
               onChange={(e) => setDownloadUrl(e.target.value)}
               className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
@@ -271,7 +414,7 @@ export default function ReleasesPage() {
 
         <div>
           <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-            SHA-256 Checksum (Integrity Verification)
+            SHA-256 Checksum
           </label>
           <input
             type="text"
@@ -285,11 +428,11 @@ export default function ReleasesPage() {
 
         <div>
           <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-            Release Notes (Markdown supported)
+            Release Notes
           </label>
           <textarea
-            rows={4}
-            placeholder="- Support real-time Cloud Sync&#10;- Free zero-dollar share link redirection&#10;- Improved player UI"
+            rows={3}
+            placeholder="- Support real-time Cloud Sync&#10;- Free zero-dollar share link redirection"
             value={releaseNotes}
             onChange={(e) => setReleaseNotes(e.target.value)}
             className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -307,7 +450,7 @@ export default function ReleasesPage() {
               className="rounded border-white/[0.1] bg-[#171822] text-indigo-600 focus:ring-indigo-500"
             />
             <label htmlFor="landing-primary-check" className="text-xs text-slate-200 cursor-pointer">
-              <b>Promote to Landing Page Download:</b> Features this version as the primary hero button download on the landing page.
+              <b>Promote as Primary Landing Page Release:</b> Serves this version directly to visitor downloads on the landing page.
             </label>
           </div>
 
@@ -320,7 +463,7 @@ export default function ReleasesPage() {
               className="rounded border-white/[0.1] bg-[#171822] text-indigo-600 focus:ring-indigo-500"
             />
             <label htmlFor="mandatory-check" className="text-xs text-slate-300 cursor-pointer">
-              Mandatory Update (Forces existing listeners to update before app launch)
+              Mandatory Update
             </label>
           </div>
         </div>
@@ -332,10 +475,95 @@ export default function ReleasesPage() {
             className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium text-xs shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
           >
             <UploadCloud className="w-4 h-4" />
-            <span>{saving ? 'Publishing Release...' : timingMode === 'scheduled' ? 'Schedule Countdown Release' : 'Publish APK Release Immediately'}</span>
+            <span>{saving ? 'Saving / Rescheduling...' : timingMode === 'scheduled' ? 'Save & Schedule Countdown Release' : 'Save & Publish Immediately'}</span>
           </button>
         </div>
       </form>
+
+      {/* Existing Releases Table */}
+      <div className="p-6 bg-[#12131b] border border-white/[0.06] rounded-2xl space-y-4">
+        <h2 className="text-sm font-bold text-white flex items-center gap-2">
+          <span>Release Registry ({releases.length})</span>
+        </h2>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-white/[0.06] text-slate-400 font-semibold">
+                <th className="py-2.5 px-3">Version</th>
+                <th className="py-2.5 px-3">Track</th>
+                <th className="py-2.5 px-3">Timing & Lock Status</th>
+                <th className="py-2.5 px-3">Landing</th>
+                <th className="py-2.5 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
+              {releases.map((rel) => {
+                const isScheduled = rel.scheduled_release_at && new Date(rel.scheduled_release_at) > new Date();
+
+                return (
+                  <tr key={rel.id} className="hover:bg-white/[0.02] transition">
+                    <td className="py-3 px-3">
+                      <div className="font-semibold text-white">v{rel.version_name}</div>
+                      <div className="text-[10px] text-slate-500 font-mono">Build {rel.version_code}</div>
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className="capitalize px-2 py-0.5 rounded bg-white/[0.06] text-slate-300 font-mono text-[10px]">
+                        {rel.channel}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3">
+                      {isScheduled ? (
+                        <div className="flex items-center gap-1.5 text-violet-300 font-medium">
+                          <Lock className="w-3.5 h-3.5 text-violet-400" />
+                          <span>
+                            {new Date(rel.scheduled_release_at!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}{' '}
+                            <span className="text-[10px] text-slate-400">({new Date(rel.scheduled_release_at!).toLocaleDateString()})</span>
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          <span>Live Now</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3 px-3">
+                      {rel.is_landing_primary ? (
+                        <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-semibold">
+                          Primary
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 text-[11px]">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {isScheduled && (
+                          <button
+                            type="button"
+                            onClick={() => handleQuickUnlock(rel.id, rel.version_name)}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[11px] font-medium transition cursor-pointer"
+                          >
+                            Unlock Now
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleSelectRelease(rel)}
+                          className="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 text-[11px] font-medium transition cursor-pointer"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

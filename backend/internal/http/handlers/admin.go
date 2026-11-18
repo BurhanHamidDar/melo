@@ -369,13 +369,102 @@ func (h *AdminHandler) CreateRelease(w http.ResponseWriter, r *http.Request) {
 			                         package_name, download_url, sha256, signing_cert_sha256, file_size_bytes, release_notes,
 			                         rollout_percentage, status, mandatory, scheduled_release_at, r2_object_key, is_landing_primary)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+			ON CONFLICT (platform, channel, version_code) DO UPDATE SET
+				version_name = EXCLUDED.version_name,
+				min_supported_version_code = EXCLUDED.min_supported_version_code,
+				package_name = EXCLUDED.package_name,
+				download_url = EXCLUDED.download_url,
+				sha256 = EXCLUDED.sha256,
+				signing_cert_sha256 = EXCLUDED.signing_cert_sha256,
+				file_size_bytes = EXCLUDED.file_size_bytes,
+				release_notes = EXCLUDED.release_notes,
+				rollout_percentage = EXCLUDED.rollout_percentage,
+				status = EXCLUDED.status,
+				mandatory = EXCLUDED.mandatory,
+				scheduled_release_at = EXCLUDED.scheduled_release_at,
+				r2_object_key = EXCLUDED.r2_object_key,
+				is_landing_primary = EXCLUDED.is_landing_primary,
+				updated_at = NOW()
+			RETURNING id
 		`
-		_, err := h.DB.Pool.Exec(r.Context(), query, rel.ID, rel.Platform, rel.Channel, rel.VersionCode, rel.VersionName,
+		var savedID uuid.UUID
+		err := h.DB.Pool.QueryRow(r.Context(), query, rel.ID, rel.Platform, rel.Channel, rel.VersionCode, rel.VersionName,
 			rel.MinSupportedVersionCode, rel.PackageName, rel.DownloadURL, rel.SHA256, rel.SigningCertSHA256,
 			rel.FileSizeBytes, rel.ReleaseNotes, rel.RolloutPercentage, rel.Status, rel.Mandatory,
-			rel.ScheduledReleaseAt, rel.R2ObjectKey, rel.IsLandingPrimary)
+			rel.ScheduledReleaseAt, rel.R2ObjectKey, rel.IsLandingPrimary).Scan(&savedID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to save release: "+err.Error())
+			return
+		}
+		rel.ID = savedID
+
+		var actorID *uuid.UUID
+		if adminUser := middleware.GetUserFromContext(r.Context()); adminUser != nil {
+			actorID = &adminUser.ID
+		}
+		h.recordAuditLog(r.Context(), actorID, "create_release", "app_releases", rel.ID.String(),
+			fmt.Sprintf("Saved/updated release %s (v%d)", rel.VersionName, rel.VersionCode), nil)
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"release": rel,
+	})
+}
+
+func (h *AdminHandler) ListReleases(w http.ResponseWriter, r *http.Request) {
+	releases := make([]models.AppRelease, 0)
+	if h.DB != nil && h.DB.Pool != nil {
+		query := `
+			SELECT id, platform, channel, version_code, version_name, min_supported_version_code,
+			       package_name, COALESCE(download_url, ''), sha256, signing_cert_sha256,
+			       file_size_bytes, release_notes, rollout_percentage, status, mandatory,
+			       published_at, scheduled_release_at, COALESCE(r2_object_key, ''), is_landing_primary,
+			       created_at, updated_at
+			FROM app_releases
+			ORDER BY version_code DESC
+		`
+		rows, err := h.DB.Pool.Query(r.Context(), query)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var rel models.AppRelease
+				var r2Key string
+				if err := rows.Scan(
+					&rel.ID, &rel.Platform, &rel.Channel, &rel.VersionCode, &rel.VersionName,
+					&rel.MinSupportedVersionCode, &rel.PackageName, &rel.DownloadURL, &rel.SHA256,
+					&rel.SigningCertSHA256, &rel.FileSizeBytes, &rel.ReleaseNotes,
+					&rel.RolloutPercentage, &rel.Status, &rel.Mandatory, &rel.PublishedAt,
+					&rel.ScheduledReleaseAt, &r2Key, &rel.IsLandingPrimary, &rel.CreatedAt, &rel.UpdatedAt,
+				); err == nil {
+					rel.R2ObjectKey = &r2Key
+					releases = append(releases, rel)
+				}
+			}
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"releases": releases,
+	})
+}
+
+func (h *AdminHandler) QuickUnlockRelease(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	releaseID, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_ID", "Invalid release ID")
+		return
+	}
+
+	if h.DB != nil && h.DB.Pool != nil {
+		_, _ = h.DB.Pool.Exec(r.Context(), "UPDATE app_releases SET is_landing_primary = false WHERE platform = 'android'")
+		query := `
+			UPDATE app_releases
+			SET scheduled_release_at = NULL, is_landing_primary = true, status = 'published', updated_at = NOW()
+			WHERE id = $1
+		`
+		_, err := h.DB.Pool.Exec(r.Context(), query, releaseID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to unlock release: "+err.Error())
 			return
 		}
 
@@ -383,12 +472,12 @@ func (h *AdminHandler) CreateRelease(w http.ResponseWriter, r *http.Request) {
 		if adminUser := middleware.GetUserFromContext(r.Context()); adminUser != nil {
 			actorID = &adminUser.ID
 		}
-		h.recordAuditLog(r.Context(), actorID, "create_release", "app_releases", rel.ID.String(),
-			fmt.Sprintf("Created release %s (v%d)", rel.VersionName, rel.VersionCode), nil)
+		h.recordAuditLog(r.Context(), actorID, "unlock_release", "app_releases", releaseID.String(), "Instantly unlocked release for immediate download", nil)
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]interface{}{
-		"release": rel,
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Release unlocked and published immediately",
 	})
 }
 
