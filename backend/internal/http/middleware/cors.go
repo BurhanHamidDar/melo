@@ -42,11 +42,15 @@ func CORSMiddleware(allowedOrigins string) func(http.Handler) http.Handler {
 			originsList[o] = true
 		}
 	}
-	// Always allow local dev landing and admin origins in development
+	// Always allow local dev landing and admin origins in development, plus production subdomains
 	originsList["http://localhost:3000"] = true
 	originsList["http://localhost:8000"] = true
 	originsList["http://127.0.0.1:3000"] = true
 	originsList["http://127.0.0.1:8000"] = true
+	originsList["https://admin.burhanhamid.in"] = true
+	originsList["https://melo.burhanhamid.in"] = true
+	originsList["http://admin.burhanhamid.in"] = true
+	originsList["http://melo.burhanhamid.in"] = true
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

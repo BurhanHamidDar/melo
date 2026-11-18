@@ -16,6 +16,7 @@ import {
   Eye,
   Type,
 } from 'lucide-react';
+import { MeloGlobeIcon } from '@/components/MeloIcons';
 
 export default function LandingPageCMS() {
   const [content, setContent] = useState<LandingContent | null>(null);
@@ -126,11 +127,11 @@ export default function LandingPageCMS() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Globe className="w-5 h-5 text-indigo-400" />
+          <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+            <MeloGlobeIcon size={22} className="text-[#f5e27a]" />
             <span>Landing Page Content Management (CMS)</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-[#a6a6ad] mt-0.5 font-medium">
             Dynamically update hero marketing copy, announcement banners, and showcased app screenshots
           </p>
         </div>
@@ -139,11 +140,11 @@ export default function LandingPageCMS() {
           href="/"
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-medium text-slate-300 border border-white/[0.08] transition"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#18181b] hover:bg-[#232327] text-xs font-semibold text-[#a6a6ad] hover:text-white border border-white/[0.08] transition"
         >
-          <Eye className="w-3.5 h-3.5 text-indigo-400" />
+          <Eye className="w-3.5 h-3.5 text-[#f5e27a]" />
           <span>View Live Site</span>
-          <ExternalLink className="w-3 h-3 text-slate-500" />
+          <ExternalLink className="w-3 h-3 text-[#6c6c74]" />
         </a>
       </div>
 

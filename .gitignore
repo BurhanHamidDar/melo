@@ -50,6 +50,10 @@ node_modules/
 .next/
 dist/
 api.exe
+api
+api-linux-*
+backend/api-linux-*
+.firebase/
 
 **/.cxx/
 /app/.cxx

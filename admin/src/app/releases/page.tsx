@@ -23,6 +23,14 @@ import {
   PlusCircle,
   Info,
 } from 'lucide-react';
+import {
+  MeloLogo,
+  MeloMark,
+  MeloReleasesIcon,
+  MeloCloudIcon,
+  MeloDownloadIcon,
+  MeloGlobeIcon,
+} from '@/components/MeloIcons';
 
 export default function ReleasesPage() {
   const [releases, setReleases] = useState<AppRelease[]>([]);
@@ -301,11 +309,11 @@ export default function ReleasesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Smartphone className="w-5 h-5 text-indigo-400" />
-            <span>App Release Distribution & Direct APK Uploader</span>
+          <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+            <MeloReleasesIcon size={22} className="text-[#f5e27a]" />
+            <span>App Release Distribution &amp; Direct APK Uploader</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-[#a6a6ad] mt-0.5 font-medium">
             Upload new APK binaries directly and schedule unbypassable countdown drops or immediate rollouts
           </p>
         </div>
@@ -313,9 +321,9 @@ export default function ReleasesPage() {
         <button
           onClick={() => loadReleases()}
           disabled={loadingReleases}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-medium text-slate-300 border border-white/[0.08] transition cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#18181b] hover:bg-[#232327] text-xs font-semibold text-[#a6a6ad] hover:text-white border border-white/[0.08] transition cursor-pointer"
         >
-          <RefreshCw className={`w-3.5 h-3.5 text-indigo-400 ${loadingReleases ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 text-[#f5e27a] ${loadingReleases ? 'animate-spin' : ''}`} />
           <span>Refresh Releases</span>
         </button>
       </div>

@@ -6,7 +6,8 @@
 
   // Determine API base URL
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const API_BASE = window.MELO_API_BASE || (isLocal ? 'http://localhost:8080' : 'https://api.melo.music');
+  const defaultProdApi = 'https://api.burhanhamid.in';
+  const API_BASE = window.MELO_API_BASE || (isLocal ? 'http://localhost:8080' : defaultProdApi);
 
   let countdownInterval = null;
 

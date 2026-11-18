@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   RefreshCw,
 } from 'lucide-react';
+import { MeloUsersIcon, MeloSearchIcon } from '@/components/MeloIcons';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -62,11 +63,11 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Users className="w-5 h-5 text-indigo-400" />
-            <span>User Management & Cloud Sync</span>
+          <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+            <MeloUsersIcon size={22} className="text-[#f5e27a]" />
+            <span>User Management &amp; Cloud Sync</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-[#a6a6ad] mt-0.5 font-medium">
             Registered Melo listeners, sync mutations, and account status controls
           </p>
         </div>
@@ -74,8 +75,8 @@ export default function UsersPage() {
         {/* Search Input */}
         <div className="flex items-center gap-2">
           <div className="relative w-64">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-              <Search className="w-3.5 h-3.5" />
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#a6a6ad]">
+              <MeloSearchIcon size={14} />
             </div>
             <input
               type="text"
@@ -83,12 +84,12 @@ export default function UsersPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && loadUsers()}
-              className="w-full pl-9 pr-3.5 py-1.5 bg-[#141620] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
+              className="w-full pl-9 pr-3.5 py-2 bg-[#18181b] border border-white/[0.08] rounded-full text-xs text-white placeholder-[#6c6c74] focus:outline-none focus:ring-2 focus:ring-[#f5e27a]/30 focus:border-[#f5e27a]/50 transition-all"
             />
           </div>
           <button
             onClick={loadUsers}
-            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium shadow-sm transition cursor-pointer"
+            className="px-4 py-2 bg-white hover:bg-[#e6e6e6] text-black rounded-full text-xs font-bold shadow-md shadow-white/10 transition cursor-pointer"
           >
             Search
           </button>
@@ -96,7 +97,7 @@ export default function UsersPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-[#12131b] border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-[#141416]/90 border border-white/[0.08] rounded-3xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-white/[0.04]">
             <thead className="bg-[#161723]">

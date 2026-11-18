@@ -42,7 +42,7 @@ object MeloUpdateManager {
     var backendApiBaseUrl = if (BuildConfig.DEBUG) {
         if (isEmulator) "http://10.0.2.2:8080" else "http://192.168.31.36:8080"
     } else {
-        "https://api.melo.app"
+        "https://api.burhanhamid.in"
     }
 
     val candidateBaseUrls: List<String>
@@ -52,6 +52,7 @@ object MeloUpdateManager {
                     "http://10.0.2.2:8080",
                     "http://192.168.31.36:8080",
                     "http://127.0.0.1:8080",
+                    "https://api.burhanhamid.in",
                     "https://api.melo.app"
                 )
             } else {
@@ -59,11 +60,12 @@ object MeloUpdateManager {
                     "http://192.168.31.36:8080",
                     "http://10.0.2.2:8080",
                     "http://127.0.0.1:8080",
+                    "https://api.burhanhamid.in",
                     "https://api.melo.app"
                 )
             }
         } else {
-            listOf("https://api.melo.app")
+            listOf("https://api.burhanhamid.in", "https://api.melo.app")
         }
 
     private val _updateState = MutableStateFlow<MeloReleaseInfo?>(null)

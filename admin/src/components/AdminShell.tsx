@@ -4,11 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Sidebar } from './Sidebar';
-import {
-  Search,
-  Bell,
-  Music2,
-} from 'lucide-react';
+import { MeloLogo, MeloSearchIcon, MeloCloudIcon } from './MeloIcons';
+import { Bell } from 'lucide-react';
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -32,18 +29,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const showLoadingOverlay = !mounted || (loading && !isLoginPage) || (!user && !isLoginPage);
 
   return (
-    <div className="min-h-screen bg-[#0a0b0f] text-slate-100 flex relative">
-      {/* Loading Overlay: Preserves children in React component tree so Webpack manifests never desync */}
+    <div className="min-h-screen text-white flex relative font-['Inter'] selection:bg-[#f5e27a]/25 selection:text-white">
+      {/* Loading Overlay with authentic Melo Logo */}
       {showLoadingOverlay && (
-        <div className="fixed inset-0 z-50 bg-[#0a0b0f] flex flex-col items-center justify-center text-slate-100 select-none">
+        <div className="fixed inset-0 z-50 bg-[#0e0e0f]/95 backdrop-blur-2xl flex flex-col items-center justify-center text-white select-none">
           <div className="relative flex items-center justify-center mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 animate-pulse flex items-center justify-center shadow-xl shadow-indigo-600/30">
-              <Music2 className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 rounded-3xl bg-[#1b1b1f] border border-white/[0.12] flex items-center justify-center shadow-2xl shadow-black">
+              <MeloLogo size={36} className="text-[#f5e27a] animate-pulse" />
             </div>
-            <div className="absolute inset-0 rounded-2xl border-2 border-indigo-500/40 animate-ping" />
+            <div className="absolute inset-0 rounded-3xl border border-[#f5e27a]/30 animate-ping pointer-events-none" />
           </div>
-          <p className="text-sm font-medium text-slate-300">Verifying Administrator Privileges...</p>
-          <p className="text-xs text-slate-500 mt-1">Checking cryptographic session & RBAC policies</p>
+          <p className="text-sm font-bold text-white tracking-tight">Verifying Melo Administrator...</p>
+          <p className="text-xs text-[#a6a6ad] mt-1">Cryptographic session & RBAC handshake</p>
         </div>
       )}
 
@@ -59,21 +56,21 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
           <div className="pl-64 flex-1 flex flex-col min-h-screen min-w-0">
             {/* Top Header */}
-            <header className="h-18 border-b border-white/[0.06] bg-[#0d0e13]/80 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-20">
-              {/* Search Bar */}
+            <header className="h-18 border-b border-white/[0.08] bg-[#0e0e10]/80 backdrop-blur-2xl px-8 flex items-center justify-between sticky top-0 z-20">
+              {/* Search Bar with Melo Search Icon */}
               <div className="relative w-80 max-w-sm">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Search className="w-4 h-4" />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#a6a6ad]">
+                  <MeloSearchIcon size={16} />
                 </div>
                 <input
                   type="text"
-                  placeholder="Search listeners, releases, logs..."
+                  placeholder="Search listeners, releases, sync..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-12 py-2 bg-[#141620] border border-white/[0.06] rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
+                  className="w-full pl-10 pr-12 py-2.5 bg-[#18181b] border border-white/[0.08] rounded-full text-xs text-white placeholder-[#6c6c74] focus:outline-none focus:ring-2 focus:ring-[#f5e27a]/30 focus:border-[#f5e27a]/50 transition-all"
                 />
-                <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
-                  <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-slate-400">
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-white/[0.08] border border-white/[0.1] text-[#a6a6ad]">
                     ⌘K
                   </kbd>
                 </div>
@@ -82,40 +79,40 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               {/* Right Header Actions */}
               <div className="flex items-center gap-4">
                 {/* Live System Status Pill */}
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Melo Cloud Active</span>
+                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#30d158]/10 border border-[#30d158]/20 text-[#30d158] text-xs font-bold">
+                  <span className="w-2 h-2 rounded-full bg-[#30d158] shadow-[0_0_8px_#30d158]" />
+                  <span className="tracking-tight">Cluster Active</span>
+                </div>
+
+                {/* Cloud Sync Status */}
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#18181b] border border-white/[0.06] text-xs font-semibold text-[#a6a6ad]">
+                  <MeloCloudIcon size={15} className="text-[#f5e27a]" />
+                  <span>Sync Online</span>
                 </div>
 
                 {/* Notification Bell */}
                 <button
-                  title="Recent alerts"
-                  className="p-2 rounded-xl bg-[#141620] border border-white/[0.06] text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] transition-colors relative"
+                  title="System notifications"
+                  className="p-2.5 rounded-2xl bg-[#18181b] border border-white/[0.08] text-[#a6a6ad] hover:text-white hover:bg-white/[0.06] transition-colors relative cursor-pointer"
                 >
                   <Bell className="w-4 h-4" />
-                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500 ring-2 ring-[#0d0e13]" />
+                  <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[#f5e27a] ring-2 ring-[#0e0e10]" />
                 </button>
 
                 {/* Admin Avatar Pill */}
-                <div className="flex items-center gap-3 pl-2 border-l border-white/[0.08]">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center font-bold text-white text-xs shadow-md shadow-indigo-600/20 ring-1 ring-white/10">
-                    {user?.displayName ? user.displayName.slice(0, 2).toUpperCase() : 'AD'}
-                  </div>
-                  <div className="text-left hidden sm:block">
-                    <p className="text-xs font-semibold text-slate-200 leading-tight">
-                      {user?.displayName || 'Administrator'}
-                    </p>
-                    <span className="text-[10px] font-medium text-indigo-400 uppercase tracking-wider">
-                      Super Admin
-                    </span>
+                <div className="flex items-center gap-2.5 pl-3 border-l border-white/[0.08]">
+                  <div className="w-8 h-8 rounded-full bg-[#232327] border border-white/[0.12] flex items-center justify-center font-bold text-xs text-white">
+                    {user?.displayName ? user.displayName.slice(0, 2).toUpperCase() : 'ME'}
                   </div>
                 </div>
               </div>
             </header>
 
-            {/* Dashboard Content */}
-            <main className="p-8 max-w-7xl mx-auto w-full flex-1">
-              {children}
+            {/* Main Content Area */}
+            <main className="flex-1 p-8 overflow-y-auto">
+              <div className="max-w-7xl mx-auto">
+                {children}
+              </div>
             </main>
           </div>
         </div>

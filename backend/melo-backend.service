@@ -1,0 +1,16 @@
+[Unit]
+Description=Melo Go Backend API Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/melo/backend
+ExecStart=/home/ubuntu/melo/backend/api
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+EnvironmentFile=/home/ubuntu/melo/backend/.env
+
+[Install]
+WantedBy=multi-user.target

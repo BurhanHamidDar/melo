@@ -11,6 +11,7 @@ import {
   Radio,
   Sparkles,
 } from 'lucide-react';
+import { MeloAnnouncementsIcon } from '@/components/MeloIcons';
 
 export default function AnnouncementsPage() {
   const [title, setTitle] = useState('');
@@ -86,11 +87,11 @@ export default function AnnouncementsPage() {
     <div className="max-w-4xl space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-          <Megaphone className="w-5 h-5 text-indigo-400" />
-          <span>Announcements & Push Notifications</span>
+        <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+          <MeloAnnouncementsIcon size={22} className="text-[#f5e27a]" />
+          <span>Announcements &amp; Push Notifications</span>
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-[#a6a6ad] mt-0.5 font-medium">
           Broadcast banners to in-app notification center and push alerts via FCM
         </p>
       </div>

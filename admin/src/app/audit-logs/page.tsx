@@ -10,6 +10,7 @@ import {
   Key,
   RefreshCw,
 } from 'lucide-react';
+import { MeloAuditIcon } from '@/components/MeloIcons';
 
 export default function AuditLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -32,26 +33,26 @@ export default function AuditLogsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-indigo-400" />
+          <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+            <MeloAuditIcon size={22} className="text-[#f5e27a]" />
             <span>Administrator Audit Ledger</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-[#a6a6ad] mt-0.5 font-medium">
             Immutable cryptographic ledger of all privileged administrator operations in Neon DB
           </p>
         </div>
 
         <button
           onClick={loadLogs}
-          className="px-3.5 py-1.5 rounded-xl bg-[#141620] hover:bg-[#1c1e2b] border border-white/[0.08] text-xs font-medium text-slate-300 flex items-center gap-2 transition cursor-pointer"
+          className="px-3.5 py-2 rounded-full bg-[#18181b] hover:bg-[#232327] border border-white/[0.08] text-xs font-semibold text-[#a6a6ad] hover:text-white flex items-center gap-2 transition cursor-pointer"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#f5e27a]' : 'text-[#f5e27a]'}`} />
           <span>Refresh Ledger</span>
         </button>
       </div>
 
       {/* Table Container */}
-      <div className="bg-[#12131b] border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-[#141416]/90 border border-white/[0.08] rounded-3xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-white/[0.04]">
             <thead className="bg-[#161723]">

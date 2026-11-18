@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -74,7 +75,7 @@ func (m *AuthMiddleware) RequireAdmin(requiredRole string, next http.HandlerFunc
 			return
 		}
 
-		role, err := m.checkAdminRole(r.Context(), user.ID)
+		role, err := m.checkAdminRole(r.Context(), user)
 		if err != nil || role == "" {
 			writeError(w, http.StatusForbidden, "FORBIDDEN", "Administrative privilege required")
 			return
@@ -134,16 +135,45 @@ func (m *AuthMiddleware) ensureUserExists(ctx context.Context, token *auth.Verif
 	return &user, nil
 }
 
-func (m *AuthMiddleware) checkAdminRole(ctx context.Context, userID uuid.UUID) (string, error) {
-	if m.AuthService != nil && m.AuthService.IsDevMode() {
+func (m *AuthMiddleware) checkAdminRole(ctx context.Context, user *models.User) (string, error) {
+	if user == nil {
+		return "", fmt.Errorf("user not found")
+	}
+
+	// 1. Dev token bypass only for the explicit dev-admin account
+	if m.AuthService != nil && m.AuthService.IsDevMode() && user.FirebaseUID == "admin-1" {
 		return "super_admin", nil
 	}
+
+	userEmail := ""
+	if user.Email != nil {
+		userEmail = strings.ToLower(strings.TrimSpace(*user.Email))
+	}
+
+	// 2. Strict restriction: Accounts must be burhanhamid912@gmail.com or miry4698@gmail.com
+	if user.FirebaseUID != "admin-1" && userEmail != "burhanhamid912@gmail.com" && userEmail != "miry4698@gmail.com" {
+		return "", fmt.Errorf("unauthorized admin account: %s", userEmail)
+	}
+
 	if m.DB == nil || m.DB.Pool == nil {
-		return "super_admin", nil // Dev fallback
+		if userEmail == "burhanhamid912@gmail.com" || userEmail == "miry4698@gmail.com" || user.FirebaseUID == "admin-1" {
+			return "super_admin", nil
+		}
+		return "", fmt.Errorf("database unavailable")
+	}
+
+	// 3. Ensure primary admin accounts are auto-promoted/synced in admin_roles
+	if userEmail == "burhanhamid912@gmail.com" || userEmail == "miry4698@gmail.com" {
+		_, _ = m.DB.Pool.Exec(ctx, `
+			INSERT INTO admin_roles (user_id, role)
+			VALUES ($1, 'super_admin')
+			ON CONFLICT (user_id) DO UPDATE SET role = 'super_admin'
+		`, user.ID)
+		return "super_admin", nil
 	}
 
 	var role string
-	err := m.DB.Pool.QueryRow(ctx, "SELECT role FROM admin_roles WHERE user_id = $1", userID).Scan(&role)
+	err := m.DB.Pool.QueryRow(ctx, "SELECT role FROM admin_roles WHERE user_id = $1", user.ID).Scan(&role)
 	if err != nil {
 		return "", err
 	}

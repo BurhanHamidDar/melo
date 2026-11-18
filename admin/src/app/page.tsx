@@ -19,6 +19,16 @@ import {
   Activity,
   Layers,
 } from 'lucide-react';
+import {
+  MeloLogo,
+  MeloMark,
+  MeloUsersIcon,
+  MeloLibraryIcon,
+  MeloReleasesIcon,
+  MeloAnnouncementsIcon,
+  MeloCloudIcon,
+  MeloEqualizerIcon,
+} from '@/components/MeloIcons';
 
 export default function OverviewPage() {
   const [data, setData] = useState<OverviewResponse | null>(null);
@@ -97,13 +107,13 @@ export default function OverviewPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
             Dashboard
-            <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#30d158]/10 text-[#30d158] border border-[#30d158]/20">
               Live Neon DB
             </span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-[#a6a6ad] mt-0.5 font-medium">
             Real-time analytics and microservices health from Melo V2 backend
           </p>
         </div>
@@ -112,17 +122,17 @@ export default function OverviewPage() {
           <button
             onClick={() => loadData(timeRange)}
             disabled={refreshing}
-            className="px-3.5 py-1.5 rounded-xl bg-[#141620] hover:bg-[#1c1e2b] border border-white/[0.08] text-xs font-medium text-slate-300 flex items-center gap-2 transition-colors cursor-pointer"
+            className="px-3.5 py-2 rounded-full bg-[#18181b] hover:bg-[#232327] border border-white/[0.08] text-xs font-semibold text-[#a6a6ad] hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-[#f5e27a]' : ''}`} />
             <span>Refresh</span>
           </button>
 
           <Link
             href="/releases"
-            className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium shadow-md shadow-indigo-600/30 flex items-center gap-1.5 transition-colors"
+            className="px-4 py-2 rounded-full bg-white hover:bg-[#e6e6e6] text-black text-xs font-bold shadow-md shadow-white/10 flex items-center gap-2 transition-all"
           >
-            <Smartphone className="w-3.5 h-3.5" />
+            <MeloReleasesIcon size={14} className="text-black" />
             <span>Deploy Release</span>
           </Link>
         </div>
@@ -131,29 +141,29 @@ export default function OverviewPage() {
       {/* Top 4 Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Users */}
-        <div className="p-5 rounded-2xl bg-[#12131b] border border-white/[0.06] hover:border-white/[0.1] transition-all shadow-sm group">
+        <div className="p-5 rounded-3xl bg-[#141416]/90 border border-white/[0.08] hover:border-white/[0.15] transition-all shadow-sm group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Total Listeners</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 group-hover:scale-105 transition-transform">
-              <Users className="w-4 h-4" />
+            <span className="text-xs font-semibold text-[#a6a6ad]">Total Listeners</span>
+            <div className="w-8 h-8 rounded-2xl bg-[#f5e27a]/10 flex items-center justify-center text-[#f5e27a] group-hover:scale-110 transition-transform">
+              <MeloUsersIcon size={16} />
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold tracking-tight text-white">
+            <div className="text-2xl font-black tracking-tight text-white font-['Inter']">
               {metrics.total_users.toLocaleString()}
             </div>
             <div className="flex items-center gap-1.5 mt-1.5">
-              <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-0.5">
+              <span className="text-[11px] font-bold text-[#30d158] bg-[#30d158]/10 px-2 py-0.5 rounded-full border border-[#30d158]/20 flex items-center gap-0.5">
                 <TrendingUp className="w-3 h-3" />
                 {metrics.active_users_30d} active
               </span>
-              <span className="text-[11px] text-slate-500">last 30 days</span>
+              <span className="text-[11px] text-[#6c6c74]">last 30 days</span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-white/[0.04]">
+          <div className="mt-4 pt-3 border-t border-white/[0.06]">
             <Link
               href="/users"
-              className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center justify-between group-hover:translate-x-0.5 transition-transform"
+              className="text-[11px] text-[#f5e27a] hover:text-white font-semibold flex items-center justify-between group-hover:translate-x-0.5 transition-transform"
             >
               <span>View User Roster</span>
               <ArrowUpRight className="w-3 h-3" />
@@ -162,28 +172,28 @@ export default function OverviewPage() {
         </div>
 
         {/* Card 2: Synced Playlists & Total Mutations */}
-        <div className="p-5 rounded-2xl bg-[#12131b] border border-white/[0.06] hover:border-white/[0.1] transition-all shadow-sm group">
+        <div className="p-5 rounded-3xl bg-[#141416]/90 border border-white/[0.08] hover:border-white/[0.15] transition-all shadow-sm group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Cloud Synced Playlists</span>
-            <div className="w-8 h-8 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-400 group-hover:scale-105 transition-transform">
-              <Music className="w-4 h-4" />
+            <span className="text-xs font-semibold text-[#a6a6ad]">Cloud Synced Playlists</span>
+            <div className="w-8 h-8 rounded-2xl bg-white/[0.08] flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+              <MeloLibraryIcon size={16} />
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold tracking-tight text-white">
+            <div className="text-2xl font-black tracking-tight text-white font-['Inter']">
               {metrics.public_playlists.toLocaleString()}
             </div>
             <div className="flex items-center gap-1.5 mt-1.5">
-              <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+              <span className="text-[11px] font-bold text-[#30d158] bg-[#30d158]/10 px-2 py-0.5 rounded-full border border-[#30d158]/20">
                 {metrics.total_mutations} Mutations
               </span>
-              <span className="text-[11px] text-slate-500">CRDT ledger</span>
+              <span className="text-[11px] text-[#6c6c74]">CRDT ledger</span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-white/[0.04]">
+          <div className="mt-4 pt-3 border-t border-white/[0.06]">
             <Link
               href="/users"
-              className="text-[11px] text-violet-400 hover:text-violet-300 font-medium flex items-center justify-between group-hover:translate-x-0.5 transition-transform"
+              className="text-[11px] text-[#a6a6ad] hover:text-white font-semibold flex items-center justify-between group-hover:translate-x-0.5 transition-transform"
             >
               <span>Inspect Cloud Ledger</span>
               <ArrowUpRight className="w-3 h-3" />
@@ -192,28 +202,28 @@ export default function OverviewPage() {
         </div>
 
         {/* Card 3: Release Channels from Database */}
-        <div className="p-5 rounded-2xl bg-[#12131b] border border-white/[0.06] hover:border-white/[0.1] transition-all shadow-sm group">
+        <div className="p-5 rounded-3xl bg-[#141416]/90 border border-white/[0.08] hover:border-white/[0.15] transition-all shadow-sm group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Current Release</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
-              <Smartphone className="w-4 h-4" />
+            <span className="text-xs font-semibold text-[#a6a6ad]">Current Release</span>
+            <div className="w-8 h-8 rounded-2xl bg-[#30d158]/10 flex items-center justify-center text-[#30d158] group-hover:scale-110 transition-transform">
+              <MeloReleasesIcon size={16} />
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold tracking-tight text-white font-mono truncate">
+            <div className="text-2xl font-black tracking-tight text-white font-mono truncate">
               {metrics.current_stable}
             </div>
             <div className="flex items-center gap-1.5 mt-1.5">
-              <span className="text-[11px] font-semibold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20 font-mono">
+              <span className="text-[11px] font-bold text-[#f5e27a] bg-[#f5e27a]/10 px-2 py-0.5 rounded-full border border-[#f5e27a]/20 font-mono">
                 Beta: {metrics.current_beta}
               </span>
-              <span className="text-[11px] text-slate-500">Active</span>
+              <span className="text-[11px] text-[#6c6c74]">Active</span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-white/[0.04]">
+          <div className="mt-4 pt-3 border-t border-white/[0.06]">
             <Link
               href="/releases"
-              className="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center justify-between group-hover:translate-x-0.5 transition-transform"
+              className="text-[11px] text-[#30d158] hover:text-white font-semibold flex items-center justify-between group-hover:translate-x-0.5 transition-transform"
             >
               <span>Manage Distribution</span>
               <ArrowUpRight className="w-3 h-3" />
@@ -222,28 +232,28 @@ export default function OverviewPage() {
         </div>
 
         {/* Card 4: Moderation & Announcements */}
-        <div className="p-5 rounded-2xl bg-[#12131b] border border-white/[0.06] hover:border-white/[0.1] transition-all shadow-sm group">
+        <div className="p-5 rounded-3xl bg-[#141416]/90 border border-white/[0.08] hover:border-white/[0.15] transition-all shadow-sm group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Broadcasts & Reports</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
-              <Megaphone className="w-4 h-4" />
+            <span className="text-xs font-semibold text-[#a6a6ad]">Broadcasts & Reports</span>
+            <div className="w-8 h-8 rounded-2xl bg-[#ffb340]/10 flex items-center justify-center text-[#ffb340] group-hover:scale-110 transition-transform">
+              <MeloAnnouncementsIcon size={16} />
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold tracking-tight text-white">
-              {metrics.active_announcements} <span className="text-sm font-normal text-slate-400">Active</span>
+            <div className="text-2xl font-black tracking-tight text-white font-['Inter']">
+              {metrics.active_announcements} <span className="text-sm font-normal text-[#a6a6ad]">Active</span>
             </div>
             <div className="flex items-center gap-1.5 mt-1.5">
-              <span className="text-[11px] font-semibold text-slate-300 bg-white/[0.05] px-1.5 py-0.5 rounded border border-white/[0.08]">
+              <span className="text-[11px] font-bold text-white bg-white/[0.08] px-2 py-0.5 rounded-full border border-white/[0.1]">
                 {metrics.open_reports} Reports
               </span>
-              <span className="text-[11px] text-slate-500">Live feed</span>
+              <span className="text-[11px] text-[#6c6c74]">Live feed</span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-white/[0.04]">
+          <div className="mt-4 pt-3 border-t border-white/[0.06]">
             <Link
               href="/announcements"
-              className="text-[11px] text-amber-400 hover:text-amber-300 font-medium flex items-center justify-between group-hover:translate-x-0.5 transition-transform"
+              className="text-[11px] text-[#ffb340] hover:text-white font-semibold flex items-center justify-between group-hover:translate-x-0.5 transition-transform"
             >
               <span>View Announcements</span>
               <ArrowUpRight className="w-3 h-3" />
@@ -255,30 +265,30 @@ export default function OverviewPage() {
       {/* Middle Row: Wave Chart (Left) + Circular Gauge (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Large Wave Line Chart (Real Telemetry from Neon DB) */}
-        <div className="lg:col-span-7 p-6 rounded-3xl bg-[#12131b] border border-white/[0.06] shadow-sm flex flex-col justify-between">
+        <div className="lg:col-span-7 p-6 rounded-3xl bg-[#141416]/90 border border-white/[0.08] shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <span>Platform Activity & Cloud Mutations</span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+              <h2 className="text-sm font-extrabold text-white flex items-center gap-2">
+                <span>Platform Activity &amp; Cloud Mutations</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#f5e27a]/15 text-[#f5e27a] border border-[#f5e27a]/30 font-bold">
                   {analytics?.total_period_ops || 0} ops in {timeRange}
                 </span>
               </h2>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-[11px] text-[#a6a6ad] mt-0.5 font-medium">
                 Real-time mutations and user registrations recorded in Neon DB
               </p>
             </div>
 
             {/* Time Toggle Pills */}
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-[#171824] border border-white/[0.06]">
+            <div className="flex items-center gap-1 p-1 rounded-full bg-[#18181b] border border-white/[0.06]">
               {(['7d', '30d', '90d'] as const).map((range) => (
                 <button
                   key={range}
                   onClick={() => setTimeRange(range)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                     timeRange === range
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-white text-black shadow-md'
+                      : 'text-[#a6a6ad] hover:text-white'
                   }`}
                 >
                   {range}
@@ -298,24 +308,24 @@ export default function OverviewPage() {
                   top: `${(peakPoint.y / svgHeight) * 100}%`,
                 }}
               >
-                <div className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-[11px] font-bold shadow-xl shadow-indigo-600/40 border border-indigo-400/30 flex items-center gap-1.5 whitespace-nowrap">
-                  <Sparkles className="w-3 h-3 text-indigo-200" />
+                <div className="px-3 py-1.5 rounded-full bg-[#1b1b1f] text-white text-[11px] font-bold shadow-xl shadow-black border border-[#f5e27a]/40 flex items-center gap-1.5 whitespace-nowrap">
+                  <Sparkles className="w-3 h-3 text-[#f5e27a]" />
                   <span>Peak: {analytics.peak_ops} ops ({analytics.peak_date})</span>
                 </div>
-                <div className="w-2 h-2 bg-indigo-600 rotate-45 mx-auto -mt-1 shadow-sm" />
+                <div className="w-2 h-2 bg-[#1b1b1f] border-r border-b border-[#f5e27a]/40 rotate-45 mx-auto -mt-1 shadow-sm" />
               </div>
             )}
 
             <svg className="w-full h-full overflow-visible" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
               <defs>
                 <linearGradient id="waveGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#6366f1" stopOpacity="0.0" />
+                  <stop offset="0%" stopColor="#f5e27a" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#f5e27a" stopOpacity="0.0" />
                 </linearGradient>
 
                 <linearGradient id="secondaryGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#a855f7" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#a855f7" stopOpacity="0.0" />
+                  <stop offset="0%" stopColor="#30d158" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#30d158" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
@@ -329,7 +339,7 @@ export default function OverviewPage() {
                 <path
                   d={secondaryPathD}
                   fill="none"
-                  stroke="#a855f7"
+                  stroke="#30d158"
                   strokeWidth="1.5"
                   strokeDasharray="4 4"
                   opacity="0.6"
@@ -346,7 +356,7 @@ export default function OverviewPage() {
                 <path
                   d={primaryPathD}
                   fill="none"
-                  stroke="#6366f1"
+                  stroke="#f5e27a"
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -360,8 +370,8 @@ export default function OverviewPage() {
                   cx={p.x}
                   cy={p.y}
                   r={p.total_ops > 0 ? 4 : 2}
-                  fill={p.total_ops > 0 ? '#ffffff' : '#6366f1'}
-                  stroke="#6366f1"
+                  fill={p.total_ops > 0 ? '#ffffff' : '#f5e27a'}
+                  stroke="#f5e27a"
                   strokeWidth={2}
                 />
               ))}
@@ -373,7 +383,7 @@ export default function OverviewPage() {
                   cy={peakPoint.y}
                   r="6"
                   fill="#ffffff"
-                  stroke="#6366f1"
+                  stroke="#f5e27a"
                   strokeWidth="3"
                   className="animate-pulse"
                 />
@@ -381,7 +391,7 @@ export default function OverviewPage() {
             </svg>
 
             {/* X-Axis Dynamic Date Labels */}
-            <div className="flex justify-between items-center text-[10px] text-slate-500 font-medium px-2 pt-2 border-t border-white/[0.04]">
+            <div className="flex justify-between items-center text-[10px] text-[#6c6c74] font-medium px-2 pt-2 border-t border-white/[0.04]">
               {trends.map((t, idx) => {
                 if (trends.length > 14 && idx % Math.ceil(trends.length / 7) !== 0 && idx !== trends.length - 1) {
                   return null;
@@ -397,16 +407,16 @@ export default function OverviewPage() {
         </div>
 
         {/* Circular Donut Gauge Card (Microservices Health) */}
-        <div className="lg:col-span-5 p-6 rounded-3xl bg-[#12131b] border border-white/[0.06] shadow-sm flex flex-col justify-between">
+        <div className="lg:col-span-5 p-6 rounded-3xl bg-[#141416]/90 border border-white/[0.08] shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-sm font-bold text-white">Infrastructure Health</h2>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Microservices availability & ping telemetry
+                <h2 className="text-sm font-extrabold text-white">Infrastructure Health</h2>
+                <p className="text-[11px] text-[#a6a6ad] mt-0.5 font-medium">
+                  Microservices availability &amp; ping telemetry
                 </p>
               </div>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-semibold">
+              <span className="px-2.5 py-0.5 rounded-full bg-[#30d158]/10 text-[#30d158] border border-[#30d158]/20 text-[10px] font-mono font-bold">
                 Online
               </span>
             </div>
@@ -427,7 +437,7 @@ export default function OverviewPage() {
                     cx="50"
                     cy="50"
                     r="40"
-                    stroke="#6366f1"
+                    stroke="#f5e27a"
                     strokeWidth="10"
                     strokeDasharray="251.2"
                     strokeDashoffset="25"
@@ -438,7 +448,7 @@ export default function OverviewPage() {
                     cx="50"
                     cy="50"
                     r="40"
-                    stroke="#10b981"
+                    stroke="#30d158"
                     strokeWidth="10"
                     strokeDasharray="251.2"
                     strokeDashoffset="180"
@@ -448,44 +458,44 @@ export default function OverviewPage() {
                 </svg>
 
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-[11px] text-slate-400">Ping</span>
-                  <span className="text-lg font-extrabold text-white font-mono">
+                  <span className="text-[11px] text-[#a6a6ad]">Ping</span>
+                  <span className="text-xl font-black text-white font-mono">
                     {system_health?.latency_ms || 18}ms
                   </span>
-                  <span className="text-[9px] text-emerald-400 font-medium">Optimal</span>
+                  <span className="text-[9px] text-[#30d158] font-bold uppercase tracking-wider">Optimal</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Microservices Breakdown Rows */}
-          <div className="space-y-2 pt-3 border-t border-white/[0.04]">
+          <div className="space-y-2.5 pt-3 border-t border-white/[0.06]">
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-slate-300">
-                <Database className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Neon PostgreSQL (8 Tables)</span>
+              <div className="flex items-center gap-2 text-[#a6a6ad]">
+                <Database className="w-3.5 h-3.5 text-[#f5e27a]" />
+                <span className="font-medium text-white">Neon PostgreSQL (8 Tables)</span>
               </div>
-              <span className="text-emerald-400 text-[11px] font-medium flex items-center gap-1 font-mono">
+              <span className="text-[#30d158] text-[11px] font-bold flex items-center gap-1 font-mono">
                 <CheckCircle2 className="w-3 h-3" /> {system_health?.latency_ms || 18}ms
               </span>
             </div>
 
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-slate-300">
-                <Cloud className="w-3.5 h-3.5 text-violet-400" />
-                <span>Cloudflare R2 Object Storage</span>
+              <div className="flex items-center gap-2 text-[#a6a6ad]">
+                <MeloCloudIcon size={14} className="text-[#f5e27a]" />
+                <span className="font-medium text-white">Cloudflare R2 Object Storage</span>
               </div>
-              <span className="text-emerald-400 text-[11px] font-medium flex items-center gap-1">
+              <span className="text-[#30d158] text-[11px] font-bold flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> Connected
               </span>
             </div>
 
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-slate-300">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Firebase Authentication & JWT</span>
+              <div className="flex items-center gap-2 text-[#a6a6ad]">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#30d158]" />
+                <span className="font-medium text-white">Firebase Authentication &amp; JWT</span>
               </div>
-              <span className="text-emerald-400 text-[11px] font-medium flex items-center gap-1">
+              <span className="text-[#30d158] text-[11px] font-bold flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> Verified
               </span>
             </div>
