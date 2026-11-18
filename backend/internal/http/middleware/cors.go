@@ -51,6 +51,10 @@ func CORSMiddleware(allowedOrigins string) func(http.Handler) http.Handler {
 	originsList["https://melo.burhanhamid.in"] = true
 	originsList["http://admin.burhanhamid.in"] = true
 	originsList["http://melo.burhanhamid.in"] = true
+	originsList["https://admin.applicoda.in"] = true
+	originsList["https://melo.applicoda.in"] = true
+	originsList["http://admin.applicoda.in"] = true
+	originsList["http://melo.applicoda.in"] = true
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
