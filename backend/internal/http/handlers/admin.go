@@ -3,8 +3,10 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/melo-v2/backend/internal/database"
@@ -22,6 +24,14 @@ func NewAdminHandler(db *database.DB, fcm *notifications.FCMService) *AdminHandl
 	return &AdminHandler{DB: db, FCM: fcm}
 }
 
+type ActivityDataPoint struct {
+	Date      string `json:"date"`
+	DayName   string `json:"day_name"`
+	Mutations int64  `json:"mutations"`
+	Signups   int64  `json:"signups"`
+	TotalOps  int64  `json:"total_ops"`
+}
+
 func (h *AdminHandler) Overview(w http.ResponseWriter, r *http.Request) {
 	var totalUsers int64 = 0
 	var activeUsers int64 = 0
@@ -29,14 +39,109 @@ func (h *AdminHandler) Overview(w http.ResponseWriter, r *http.Request) {
 	var totalPlaylists int64 = 0
 	var openReports int64 = 0
 	var activeAnnouncements int64 = 0
+	var totalMutations int64 = 0
+	var currentStable = "2.0.0"
+	var currentBeta = "2.0.0-rc1"
+	var dbLatencyMs int64 = 0
+
+	rangeParam := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("range")))
+	var intervalStr string
+	switch rangeParam {
+	case "30d":
+		intervalStr = "29 days"
+	case "90d":
+		intervalStr = "89 days"
+	default:
+		rangeParam = "7d"
+		intervalStr = "6 days"
+	}
+
+	activityTrends := make([]ActivityDataPoint, 0)
+	var peakDate string = ""
+	var peakOps int64 = 0
+	var totalPeriodOps int64 = 0
+
+	operationsBreakdown := map[string]int64{
+		"insert": 0,
+		"update": 0,
+		"delete": 0,
+	}
 
 	if h.DB != nil && h.DB.Pool != nil {
+		start := time.Now()
+		_ = h.DB.Pool.Ping(r.Context())
+		dbLatencyMs = time.Since(start).Milliseconds()
+
 		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users").Scan(&totalUsers)
 		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users WHERE last_seen_at >= NOW() - INTERVAL '30 days'").Scan(&activeUsers)
 		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM users WHERE account_status IN ('suspended', 'banned')").Scan(&suspendedUsers)
 		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(DISTINCT entity_id) FROM sync_mutations WHERE entity_type = 'playlist'").Scan(&totalPlaylists)
+		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM sync_mutations").Scan(&totalMutations)
 		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM reports WHERE status = 'open'").Scan(&openReports)
 		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COUNT(*) FROM announcements WHERE status = 'published'").Scan(&activeAnnouncements)
+
+		// Real latest releases from database
+		var stableRelease string
+		if err := h.DB.Pool.QueryRow(r.Context(), "SELECT version_name FROM app_releases WHERE channel = 'stable' AND status = 'published' ORDER BY version_code DESC LIMIT 1").Scan(&stableRelease); err == nil && stableRelease != "" {
+			currentStable = stableRelease
+		}
+		var betaRelease string
+		if err := h.DB.Pool.QueryRow(r.Context(), "SELECT version_name FROM app_releases WHERE channel = 'beta' AND status = 'published' ORDER BY version_code DESC LIMIT 1").Scan(&betaRelease); err == nil && betaRelease != "" {
+			currentBeta = betaRelease
+		}
+
+		// Operations breakdown
+		opRows, err := h.DB.Pool.Query(r.Context(), "SELECT operation, COUNT(*) FROM sync_mutations GROUP BY operation")
+		if err == nil {
+			defer opRows.Close()
+			for opRows.Next() {
+				var op string
+				var cnt int64
+				if err := opRows.Scan(&op, &cnt); err == nil {
+					operationsBreakdown[op] = cnt
+				}
+			}
+		}
+
+		// Real time-series trend query across the requested interval
+		trendQuery := fmt.Sprintf(`
+			SELECT 
+				TO_CHAR(d.day, 'YYYY-MM-DD') AS day_str,
+				TO_CHAR(d.day, 'Dy') AS day_name,
+				COALESCE(m.count, 0) AS mutations,
+				COALESCE(u.count, 0) AS signups
+			FROM generate_series(CURRENT_DATE - INTERVAL '%s', CURRENT_DATE, '1 day'::interval) AS d(day)
+			LEFT JOIN (
+				SELECT DATE(created_at) AS day, COUNT(*) AS count 
+				FROM sync_mutations 
+				WHERE created_at >= CURRENT_DATE - INTERVAL '%s'
+				GROUP BY DATE(created_at)
+			) m ON m.day = d.day::date
+			LEFT JOIN (
+				SELECT DATE(created_at) AS day, COUNT(*) AS count 
+				FROM users 
+				WHERE created_at >= CURRENT_DATE - INTERVAL '%s'
+				GROUP BY DATE(created_at)
+			) u ON u.day = d.day::date
+			ORDER BY d.day ASC;
+		`, intervalStr, intervalStr, intervalStr)
+
+		rows, err := h.DB.Pool.Query(r.Context(), trendQuery)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var pt ActivityDataPoint
+				if err := rows.Scan(&pt.Date, &pt.DayName, &pt.Mutations, &pt.Signups); err == nil {
+					pt.TotalOps = pt.Mutations + pt.Signups
+					totalPeriodOps += pt.TotalOps
+					if pt.TotalOps > peakOps || peakDate == "" {
+						peakOps = pt.TotalOps
+						peakDate = pt.Date
+					}
+					activityTrends = append(activityTrends, pt)
+				}
+			}
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -45,15 +150,25 @@ func (h *AdminHandler) Overview(w http.ResponseWriter, r *http.Request) {
 			"active_users_30d":     activeUsers,
 			"suspended_users":      suspendedUsers,
 			"public_playlists":     totalPlaylists,
+			"total_mutations":      totalMutations,
 			"open_reports":         openReports,
 			"active_announcements": activeAnnouncements,
-			"current_stable":       "1.0.2",
-			"current_beta":         "2.0.0-rc1",
+			"current_stable":       currentStable,
+			"current_beta":         currentBeta,
 		},
-		"system_health": map[string]string{
-			"database": "healthy",
-			"storage":  "healthy",
-			"auth":     "healthy",
+		"analytics": map[string]interface{}{
+			"range":                rangeParam,
+			"activity_trends":      activityTrends,
+			"peak_date":            peakDate,
+			"peak_ops":             peakOps,
+			"total_period_ops":     totalPeriodOps,
+			"operations_breakdown": operationsBreakdown,
+		},
+		"system_health": map[string]interface{}{
+			"database":   "healthy",
+			"latency_ms": dbLatencyMs,
+			"storage":    "healthy",
+			"auth":       "healthy",
 		},
 	})
 }

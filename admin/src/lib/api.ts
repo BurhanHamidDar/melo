@@ -1,17 +1,43 @@
+export interface ActivityTrendPoint {
+  date: string;
+  day_name: string;
+  mutations: number;
+  signups: number;
+  total_ops: number;
+}
+
+export interface AnalyticsData {
+  range: string;
+  activity_trends: ActivityTrendPoint[];
+  peak_date: string;
+  peak_ops: number;
+  total_period_ops: number;
+  operations_breakdown: Record<string, number>;
+}
+
 export interface OverviewMetrics {
   total_users: number;
   active_users_30d: number;
   suspended_users: number;
   public_playlists: number;
+  total_mutations: number;
   open_reports: number;
   active_announcements: number;
   current_stable: string;
   current_beta: string;
 }
 
+export interface SystemHealth {
+  database: string;
+  latency_ms: number;
+  storage: string;
+  auth: string;
+}
+
 export interface OverviewResponse {
   metrics: OverviewMetrics;
-  system_health: Record<string, string>;
+  analytics: AnalyticsData;
+  system_health: SystemHealth;
 }
 
 export interface UserRecord {
@@ -81,8 +107,8 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
   });
 }
 
-export async function getOverview(): Promise<OverviewResponse> {
-  const res = await fetchWithAuth('/v1/admin/overview');
+export async function getOverview(range = '7d'): Promise<OverviewResponse> {
+  const res = await fetchWithAuth(`/v1/admin/overview?range=${encodeURIComponent(range)}`);
   if (!res.ok) throw new Error('Failed to load overview metrics');
   return res.json();
 }
