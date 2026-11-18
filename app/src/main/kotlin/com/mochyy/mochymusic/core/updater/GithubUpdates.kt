@@ -260,11 +260,35 @@ suspend fun downloadApk(
         }
         if (target.exists()) target.delete()
 
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 15_000
-            readTimeout = 30_000
-            instanceFollowRedirects = true
-            setRequestProperty("User-Agent", "melo-android")
+        var currentUrl = url
+        var connection: HttpURLConnection
+        var redirectCount = 0
+        while (true) {
+            connection = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15_000
+                readTimeout = 60_000
+                instanceFollowRedirects = true
+                setRequestProperty("User-Agent", "melo-android")
+            }
+            val status = connection.responseCode
+            if ((status == HttpURLConnection.HTTP_MOVED_PERM ||
+                    status == HttpURLConnection.HTTP_MOVED_TEMP ||
+                    status == HttpURLConnection.HTTP_SEE_OTHER ||
+                    status == 307 || status == 308) && redirectCount < 5
+            ) {
+                val loc = connection.getHeaderField("Location")
+                if (!loc.isNullOrBlank()) {
+                    currentUrl = if (loc.startsWith("http://") || loc.startsWith("https://")) {
+                        loc
+                    } else {
+                        URL(URL(currentUrl), loc).toString()
+                    }
+                    connection.disconnect()
+                    redirectCount++
+                    continue
+                }
+            }
+            break
         }
         val total = release.apkSizeBytes.takeIf { it > 0 }
             ?: connection.contentLengthLong.takeIf { it > 0 }

@@ -270,8 +270,16 @@ fun MeloUpdateScreen(
                     text = "Update Melo Now",
                     style = OnbButtonStyle.Primary,
                     onClick = {
-                        if (release.downloadUrl.isNotBlank()) {
-                            if (release.downloadUrl.endsWith(".apk", ignoreCase = true)) {
+                        val targetUrl = if (release.downloadUrl.isNotBlank() && !release.downloadUrl.startsWith("http://") && !release.downloadUrl.startsWith("https://")) {
+                            "${MeloUpdateManager.backendApiBaseUrl.trimEnd('/')}/${release.downloadUrl.trimStart('/')}"
+                        } else {
+                            release.downloadUrl
+                        }
+                        if (targetUrl.isNotBlank()) {
+                            val isDirectApk = targetUrl.contains(".apk", ignoreCase = true) ||
+                                              targetUrl.contains("/releases/download") ||
+                                              targetUrl.contains("/releases/files/")
+                            if (isDirectApk) {
                                 isDownloading = true
                                 errorMessage = null
                                 scope.launch {
@@ -280,8 +288,8 @@ fun MeloUpdateScreen(
                                         tag = release.versionName,
                                         version = release.versionName,
                                         body = release.releaseNotes,
-                                        htmlUrl = release.downloadUrl,
-                                        apkUrl = release.downloadUrl,
+                                        htmlUrl = targetUrl,
+                                        apkUrl = targetUrl,
                                         apkName = "melo-v${release.versionName}.apk",
                                         apkSizeBytes = release.fileSizeBytes,
                                         publishedAt = "",
@@ -296,12 +304,12 @@ fun MeloUpdateScreen(
                                         },
                                         onFailure = { err ->
                                             errorMessage = err.message ?: "Download failed, opening browser..."
-                                            MeloUpdateManager.openDownloadUrl(context, release.downloadUrl)
+                                            MeloUpdateManager.openDownloadUrl(context, targetUrl)
                                         },
                                     )
                                 }
                             } else {
-                                MeloUpdateManager.openDownloadUrl(context, release.downloadUrl)
+                                MeloUpdateManager.openDownloadUrl(context, targetUrl)
                             }
                         } else {
                             errorMessage = "No download link provided for this release."

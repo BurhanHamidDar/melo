@@ -81,9 +81,16 @@ object MeloUpdateManager {
         }
     }
 
+    fun resetDismissed() {
+        _dismissedThisSession.value = false
+    }
+
     suspend fun checkForUpdate(context: Context, force: Boolean = false): MeloReleaseInfo? =
         withContext(Dispatchers.IO) {
             runCatching {
+                if (force) {
+                    _dismissedThisSession.value = false
+                }
                 val currentVersionCode = BuildConfig.VERSION_CODE.toLong()
                 val channel = updateChannel(context).name.lowercase()
 
@@ -113,7 +120,12 @@ object MeloUpdateManager {
                                 val relVersionName = relObj.optString("version_name", "")
                                 val minSupported = relObj.optLong("min_supported_version_code", 0L)
                                 val releaseNotes = relObj.optString("release_notes", "A new version of Melo is available.")
-                                val downloadUrl = relObj.optString("download_url", "")
+                                val rawDownloadUrl = relObj.optString("download_url", "")
+                                val downloadUrl = if (rawDownloadUrl.isNotBlank() && !rawDownloadUrl.startsWith("http://") && !rawDownloadUrl.startsWith("https://")) {
+                                    "${base.trimEnd('/')}/${rawDownloadUrl.trimStart('/')}"
+                                } else {
+                                    rawDownloadUrl
+                                }
                                 val fileSize = relObj.optLong("file_size_bytes", 0L)
                                 val sha256 = relObj.optString("sha256", "")
                                 val mandatoryFromRel = relObj.optBoolean("mandatory", false)
@@ -153,12 +165,13 @@ object MeloUpdateManager {
                 val ghRelease = getLatestRelease(updateChannel(context), force).getOrNull()
                 if (ghRelease != null && isNewerThanInstalled(ghRelease.version)) {
                     val fullVer = parseFullVersion(ghRelease.version)
+                    val rawGhUrl = ghRelease.apkUrl ?: ghRelease.htmlUrl
                     val info = MeloReleaseInfo(
                         versionCode = fullVer.buildNumber.toLong().takeIf { it > 0 } ?: (currentVersionCode + 1),
                         versionName = ghRelease.version,
                         minSupportedVersionCode = 0L,
                         releaseNotes = ghRelease.body.ifBlank { "What's new in Melo ${ghRelease.version}" },
-                        downloadUrl = ghRelease.apkUrl ?: ghRelease.htmlUrl,
+                        downloadUrl = rawGhUrl,
                         fileSizeBytes = ghRelease.apkSizeBytes,
                         sha256 = "",
                         isMandatory = false,
@@ -175,7 +188,12 @@ object MeloUpdateManager {
 
     fun openDownloadUrl(context: Context, urlString: String) {
         runCatching {
-            val uri = Uri.parse(urlString)
+            val target = if (urlString.isNotBlank() && !urlString.startsWith("http://") && !urlString.startsWith("https://")) {
+                "${backendApiBaseUrl.trimEnd('/')}/${urlString.trimStart('/')}"
+            } else {
+                urlString
+            }
+            val uri = Uri.parse(target)
             val intent = Intent(Intent.ACTION_VIEW, uri).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }

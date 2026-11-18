@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/melo-v2/backend/internal/config"
@@ -104,11 +105,43 @@ func (h *ReleaseHandler) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 	hasUpdate := release.VersionCode > clientVersionCode
 	isMandatory := (clientVersionCode > 0 && clientVersionCode < release.MinSupportedVersionCode) || release.Mandatory
 
+	if release.DownloadURL == "" {
+		release.DownloadURL = "/v1/releases/download?channel=" + release.Channel
+	}
+	if !strings.HasPrefix(release.DownloadURL, "http://") && !strings.HasPrefix(release.DownloadURL, "https://") {
+		release.DownloadURL = h.absoluteURL(r, release.DownloadURL)
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"has_update":   hasUpdate,
 		"is_mandatory": isMandatory,
 		"release":      release,
 	})
+}
+
+func (h *ReleaseHandler) absoluteURL(r *http.Request, raw string) string {
+	if raw == "" || strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
+		return raw
+	}
+	if h.CFG != nil && h.CFG.PublicAPIBaseURL != "" {
+		base := strings.TrimRight(h.CFG.PublicAPIBaseURL, "/")
+		if !strings.HasPrefix(raw, "/") {
+			raw = "/" + raw
+		}
+		return base + raw
+	}
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	host := r.Host
+	if host == "" {
+		host = "localhost:8080"
+	}
+	if !strings.HasPrefix(raw, "/") {
+		raw = "/" + raw
+	}
+	return fmt.Sprintf("%s://%s%s", scheme, host, raw)
 }
 
 // LandingStatus provides public data for the landing page hero and release countdown
