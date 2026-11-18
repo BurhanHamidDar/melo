@@ -301,8 +301,9 @@
 
     const data = await fetchReleaseStatus();
 
-    if (data && data.status === 'scheduled' && data.release && data.release.scheduled_release_at) {
-      renderCountdown(data.release.scheduled_release_at, data.server_time, data.release);
+    const targetScheduledAt = data?.scheduled_release_at || data?.release?.scheduled_release_at;
+    if (data && data.status === 'scheduled' && targetScheduledAt) {
+      renderCountdown(targetScheduledAt, data.server_time, data.release);
       updateMetadata(data.release, data);
     } else if (data && data.release) {
       renderLiveDownload(data.release);
