@@ -253,13 +253,14 @@
       updateHeroHeadline(data.landing_content);
     }
 
-    // 2. Countdown or Live Download Button
-    const ctaContainer = document.querySelector('.hero .cta');
-    if (ctaContainer && data.release) {
-      if (data.status === 'scheduled' && data.scheduled_release_at) {
-        renderCountdown(data.scheduled_release_at, data.server_time, data.release, ctaContainer);
-      } else {
-        renderLiveDownload(data.release, ctaContainer);
+    // 2. Ensure landing page CTA links cleanly to the dedicated download page
+    const firstPill = document.querySelector('.hero .cta .pill:first-child');
+    if (firstPill) {
+      firstPill.href = 'download.html';
+      if (data.status === 'scheduled') {
+        firstPill.innerHTML = `<i><svg class="line" viewBox="0 0 24 24"><path d="M12 4.5v11M7 11l5 5 5-5M5.5 19.5h13"/></svg></i>Get Melo (Launching Soon)`;
+      } else if (data.release && data.release.version_name) {
+        firstPill.innerHTML = `<i><svg class="line" viewBox="0 0 24 24"><path d="M12 4.5v11M7 11l5 5 5-5M5.5 19.5h13"/></svg></i>Download Melo v${data.release.version_name}`;
       }
     }
   }

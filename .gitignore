@@ -54,6 +54,10 @@ api
 api-linux-*
 backend/api-linux-*
 .firebase/
+banner_assets/
+*.png
+!app/src/main/res/**/*.png
+!docs/assets/**/*.png
 
 **/.cxx/
 /app/.cxx

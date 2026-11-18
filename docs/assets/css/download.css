@@ -1,0 +1,833 @@
+/* Melo Music — Play Store Style Download Experience */
+:root {
+  --play-green: #30d158;
+  --play-green-hover: #28b84d;
+  --play-gold: #f5e27a;
+  --play-card: #141416;
+  --play-card-hover: #1a1a1e;
+  --play-border: rgba(255, 255, 255, 0.08);
+  --play-border-active: rgba(255, 255, 255, 0.16);
+  --play-text-dim: #94949e;
+  --play-text-muted: #666670;
+}
+
+.download-page {
+  min-height: 100vh;
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  color: var(--fg);
+  font-family: var(--font);
+  overflow-x: hidden;
+}
+
+/* Header & Navigation */
+.dl-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(14, 14, 15, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--play-border);
+}
+
+.dl-nav-inner {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dl-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--play-text-dim);
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--play-border);
+  transition: all 0.2s ease;
+}
+
+.dl-back-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--play-border-active);
+}
+
+.dl-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 14px;
+}
+
+.dl-nav-links a {
+  color: var(--play-text-dim);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.dl-nav-links a:hover {
+  color: #fff;
+}
+
+/* Main Container */
+.dl-container {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 36px 20px 80px;
+}
+
+/* App Header Card (Play Store Identity) */
+.app-header {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.app-icon-wrap {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.app-icon {
+  width: 120px;
+  height: 120px;
+  border-radius: 28px;
+  background: #000;
+  padding: 16px;
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.app-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.app-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(48, 209, 88, 0.12);
+  color: var(--play-green);
+  border: 1px solid rgba(48, 209, 88, 0.25);
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.app-developer {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--play-gold);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-developer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-developer a:hover {
+  text-decoration: underline;
+}
+
+.app-tags-row {
+  font-size: 13px;
+  color: var(--play-text-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.app-tags-row span.dot-sep {
+  opacity: 0.4;
+}
+
+/* Play Store Rating & Stats Strip */
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--play-card);
+  border: 1px solid var(--play-border);
+  border-radius: 20px;
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.stat-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  top: 15%;
+  height: 70%;
+  width: 1px;
+  background: var(--play-border);
+}
+
+.stat-val {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.stat-lbl {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--play-text-dim);
+  letter-spacing: -0.01em;
+}
+
+/* Action & Countdown Area */
+.action-box {
+  background: var(--play-card);
+  border: 1px solid var(--play-border);
+  border-radius: 24px;
+  padding: 24px 28px;
+  margin-bottom: 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.action-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--play-gold), transparent);
+  opacity: 0.4;
+}
+
+/* Live Countdown Card */
+.cd-timer-wrap {
+  margin-bottom: 20px;
+}
+
+.cd-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cd-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(245, 226, 122, 0.12);
+  color: var(--play-gold);
+  border: 1px solid rgba(245, 226, 122, 0.25);
+}
+
+.cd-gate-badge {
+  font-size: 11px;
+  color: var(--play-text-muted);
+  font-family: var(--mono);
+}
+
+.cd-digits-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cd-digit-box {
+  background: #0a0a0b;
+  border: 1px solid var(--play-border);
+  border-radius: 16px;
+  padding: 16px 10px;
+  text-align: center;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.cd-num {
+  font-family: var(--mono);
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.cd-unit {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--play-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cd-explanation {
+  font-size: 13px;
+  color: var(--play-text-dim);
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+
+/* Download CTA Buttons */
+.cta-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.btn-primary-install {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--play-green);
+  color: #000;
+  font-weight: 800;
+  font-size: 16px;
+  padding: 16px 36px;
+  border-radius: 999px;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: all 0.25s var(--spring);
+  box-shadow: 0 8px 24px -4px rgba(48, 209, 88, 0.35);
+}
+
+.btn-primary-install:hover {
+  background: #39e363;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 12px 28px -4px rgba(48, 209, 88, 0.45);
+}
+
+.btn-locked {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #1e1e24;
+  color: var(--play-text-dim);
+  font-weight: 700;
+  font-size: 15px;
+  padding: 16px 32px;
+  border-radius: 999px;
+  cursor: not-allowed;
+  border: 1px solid var(--play-border);
+  transition: all 0.2s ease;
+}
+
+.btn-locked:hover {
+  background: #23232a;
+  color: #fff;
+}
+
+.btn-secondary-gh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 15px 24px;
+  border-radius: 999px;
+  text-decoration: none;
+  border: 1px solid var(--play-border);
+  transition: all 0.2s ease;
+}
+
+.btn-secondary-gh:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--play-border-active);
+}
+
+/* Screenshots Gallery Section (Play Store signature) */
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.section-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gallery-nav-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.gallery-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--play-card);
+  border: 1px solid var(--play-border);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gallery-arrow:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--play-border-active);
+}
+
+.screenshots-carousel {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 14px;
+  margin-bottom: 44px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.screenshots-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.shot-card {
+  flex: 0 0 230px;
+  scroll-snap-align: start;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--play-border);
+  box-shadow: 0 10px 24px -6px rgba(0, 0, 0, 0.7);
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+}
+
+.shot-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  border-color: rgba(245, 226, 122, 0.4);
+  box-shadow: 0 16px 32px -6px rgba(0, 0, 0, 0.9), 0 0 20px rgba(245, 226, 122, 0.15);
+}
+
+.shot-card img {
+  width: 100%;
+  height: auto;
+  display: block;
+  aspect-ratio: 450 / 1000;
+  object-fit: cover;
+}
+
+.shot-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px 12px 10px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.95), transparent);
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+/* About App & Features */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 44px;
+}
+
+.feature-box {
+  background: var(--play-card);
+  border: 1px solid var(--play-border);
+  border-radius: 20px;
+  padding: 20px;
+  transition: border-color 0.2s ease;
+}
+
+.feature-box:hover {
+  border-color: var(--play-border-active);
+}
+
+.feature-box h4 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+}
+
+.feature-box p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--play-text-dim);
+  margin: 0;
+}
+
+/* What's New Box */
+.whats-new-box {
+  background: var(--play-card);
+  border: 1px solid var(--play-border);
+  border-radius: 20px;
+  padding: 22px 24px;
+  margin-bottom: 44px;
+}
+
+.whats-new-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.whats-new-ver {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--play-gold);
+  background: rgba(245, 226, 122, 0.1);
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 226, 122, 0.2);
+}
+
+.whats-new-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--play-text-dim);
+  line-height: 1.7;
+}
+
+/* App Specs Table (Play Store Information) */
+.specs-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--play-card);
+  border: 1px solid var(--play-border);
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 44px;
+}
+
+.specs-table tr:not(:last-child) td {
+  border-bottom: 1px solid var(--play-border);
+}
+
+.specs-table td {
+  padding: 14px 20px;
+  font-size: 13px;
+}
+
+.specs-table td:first-child {
+  font-weight: 600;
+  color: var(--play-text-dim);
+  width: 35%;
+}
+
+.specs-table td:last-child {
+  font-weight: 700;
+  color: #fff;
+  font-family: var(--mono);
+}
+
+.sha-copy-btn {
+  margin-left: 8px;
+  padding: 3px 8px;
+  font-size: 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--play-border);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sha-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Ratings & Reviews */
+.reviews-card {
+  background: var(--play-card);
+  border: 1px solid var(--play-border);
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 44px;
+}
+
+.rating-overview {
+  display: flex;
+  gap: 36px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.rating-big-num {
+  font-size: 54px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: #fff;
+}
+
+.rating-stars {
+  color: var(--play-gold);
+  font-size: 18px;
+  margin-top: 4px;
+}
+
+.rating-total {
+  font-size: 12px;
+  color: var(--play-text-dim);
+  margin-top: 4px;
+}
+
+.rating-bars {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--play-text-dim);
+}
+
+.bar-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--play-green);
+  border-radius: 999px;
+}
+
+.reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.review-item {
+  background: #0f0f11;
+  border: 1px solid var(--play-border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.review-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.review-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--chip);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--play-gold);
+}
+
+.review-author {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.review-date {
+  font-size: 11px;
+  color: var(--play-text-muted);
+}
+
+.review-text {
+  font-size: 12.5px;
+  color: var(--play-text-dim);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* Lightbox Modal */
+.lightbox-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(12px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.lightbox-modal.active {
+  display: flex;
+}
+
+.lightbox-img {
+  max-height: 85vh;
+  max-width: 90vw;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive Media Queries */
+@media (max-width: 768px) {
+  .app-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+  }
+  .app-title-row {
+    justify-content: center;
+  }
+  .app-developer {
+    justify-content: center;
+  }
+  .app-tags-row {
+    justify-content: center;
+  }
+  .stats-strip {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .stat-item:nth-child(3)::after {
+    display: none;
+  }
+  .stat-item:nth-child(4), .stat-item:nth-child(5) {
+    display: none;
+  }
+  .cd-digits-grid {
+    gap: 8px;
+  }
+  .cd-num {
+    font-size: 26px;
+  }
+  .btn-primary-install {
+    width: 100%;
+  }
+  .btn-locked {
+    width: 100%;
+  }
+  .btn-secondary-gh {
+    width: 100%;
+    justify-content: center;
+  }
+  .rating-overview {
+    flex-direction: column;
+    text-align: center;
+  }
+}

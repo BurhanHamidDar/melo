@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Melo Music — Download APK • Official Play Store Experience</title>
+  <meta name="description" content="Download Melo Music for Android. Word-by-word synced lyrics, 10-band equalizer audio lab, lossless streaming, and liquid glass styles.">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap">
+  <link rel="stylesheet" href="../assets/css/site.css">
+  <link rel="stylesheet" href="../assets/css/download.css">
+</head>
+<body class="download-page">
+
+<!-- Top Navigation -->
+<header class="dl-nav">
+  <div class="dl-nav-inner">
+    <a href="../index.html" class="dl-back-btn press">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      <span>Back to Melo</span>
+    </a>
+    <div class="dl-nav-links">
+      <a href="../wiki/">Docs</a>
+      <a href="../wiki/#roadmap">Roadmap</a>
+      <a href="https://github.com/BurhanHamidDar/melo" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<main class="dl-container">
+  <!-- App Identity Card (Play Store Header) -->
+  <section class="app-header">
+    <div class="app-icon-wrap">
+      <div class="app-icon">
+        <img src="../assets/img/logo.svg" alt="Melo Music Icon" width="90" height="90">
+      </div>
+    </div>
+    <div class="app-meta">
+      <div class="app-title-row">
+        <h1 class="app-title">Melo Music</h1>
+        <span class="verified-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+          Verified App
+        </span>
+      </div>
+      <div class="app-developer">
+        <a href="https://github.com/BurhanHamidDar/melo" target="_blank" rel="noopener noreferrer">Applicoda &bull; Burhan Hamid</a>
+      </div>
+      <div class="app-tags-row">
+        <span>Music & Audio</span>
+        <span class="dot-sep">&bull;</span>
+        <span>Ad-Free</span>
+        <span class="dot-sep">&bull;</span>
+        <span class="dynamic-ver-name">v8.4.1</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Play Store Stats Ribbon -->
+  <section class="stats-strip">
+    <div class="stat-item">
+      <div class="stat-val">
+        <span>4.9</span>
+        <span style="color: var(--play-gold); font-size: 14px;">★</span>
+      </div>
+      <div class="stat-lbl">14.8K reviews</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">50K+</div>
+      <div class="stat-lbl">Downloads</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val dynamic-app-size">38.4 MB</div>
+      <div class="stat-lbl">Download size</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">3+</div>
+      <div class="stat-lbl">Rated for 3+</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val" style="color: var(--play-green);">Clean</div>
+      <div class="stat-lbl">Play Protect</div>
+    </div>
+  </section>
+
+  <!-- Action & Countdown Download Box -->
+  <section class="action-box">
+    <!-- Scheduled Countdown Display (dynamically shown if release is scheduled) -->
+    <div class="cd-timer-wrap" id="cd-timer-section" style="display: none;">
+      <div class="cd-badge-row">
+        <div class="cd-status-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <span>Official Release Countdown Active</span>
+        </div>
+        <div class="cd-gate-badge">🔒 Server Gate Active (UTC)</div>
+      </div>
+
+      <div class="cd-digits-grid">
+        <div class="cd-digit-box">
+          <div class="cd-num" id="cd-days">00</div>
+          <div class="cd-unit">Days</div>
+        </div>
+        <div class="cd-digit-box">
+          <div class="cd-num" id="cd-hours">00</div>
+          <div class="cd-unit">Hours</div>
+        </div>
+        <div class="cd-digit-box">
+          <div class="cd-num" id="cd-mins">00</div>
+          <div class="cd-unit">Mins</div>
+        </div>
+        <div class="cd-digit-box">
+          <div class="cd-num" id="cd-secs">00</div>
+          <div class="cd-unit">Secs</div>
+        </div>
+      </div>
+      <p class="cd-explanation">
+        This version is locked for launch. Downloads unlock automatically the instant the countdown expires.
+      </p>
+    </div>
+
+    <!-- Download Action Buttons (Populated dynamically) -->
+    <div class="cta-row" id="action-cta-area">
+      <a href="https://api.burhanhamid.in/v1/releases/download?channel=stable" class="btn-primary-install" id="direct-dl-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span>Download APK (<span class="dynamic-ver-name">v8.4.1</span> &bull; <span class="dynamic-app-size">38.4 MB</span>)</span>
+      </a>
+      <a href="https://github.com/BurhanHamidDar/melo/releases" target="_blank" rel="noopener noreferrer" class="btn-secondary-gh">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/>
+        </svg>
+        <span>GitHub Mirror</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- Real App Screenshots Carousel (Play Store Signature) -->
+  <section>
+    <div class="section-title-row">
+      <h2 class="section-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--play-gold);">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+        <span>App Screenshots</span>
+      </h2>
+      <div class="gallery-nav-btns">
+        <button type="button" class="gallery-arrow" id="arrow-left" aria-label="Previous screenshot">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <button type="button" class="gallery-arrow" id="arrow-right" aria-label="Next screenshot">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="screenshots-carousel" id="shots-carousel">
+      <div class="shot-card">
+        <img src="../assets/img/app-player.webp" alt="Flagship Now Playing Player" loading="lazy">
+        <div class="shot-caption">Now Playing Flagship</div>
+      </div>
+      <div class="shot-card">
+        <img src="../assets/img/app-lyrics.webp" alt="Word-by-word Synced Lyrics" loading="lazy">
+        <div class="shot-caption">Word-by-Word Lyrics</div>
+      </div>
+      <div class="shot-card">
+        <img src="../assets/img/app-audiolab.webp" alt="Audio Lab & 10-Band Equalizer" loading="lazy">
+        <div class="shot-caption">10-Band Audio Lab</div>
+      </div>
+      <div class="shot-card">
+        <img src="../assets/img/app-home.webp" alt="Curated Music Discoveries" loading="lazy">
+        <div class="shot-caption">Curated Discoveries</div>
+      </div>
+      <div class="shot-card">
+        <img src="../assets/img/app-library.webp" alt="Library and Cloud Playlist Sync" loading="lazy">
+        <div class="shot-caption">Cloud Playlist Sync</div>
+      </div>
+      <div class="shot-card">
+        <img src="../assets/img/app-styles.webp" alt="Liquid Glass Customizable Styles" loading="lazy">
+        <div class="shot-caption">Liquid Glass Themes</div>
+      </div>
+      <div class="shot-card">
+        <img src="../assets/img/app-search.webp" alt="Universal Music Search" loading="lazy">
+        <div class="shot-caption">Universal Search</div>
+      </div>
+      <div class="shot-card">
+        <img src="../assets/img/app-stats.webp" alt="Listening Stats & Analytics" loading="lazy">
+        <div class="shot-caption">Listening Analytics</div>
+      </div>
+      <div class="shot-card">
+        <img src="../assets/img/app-recap.webp" alt="Annual & Monthly Recap" loading="lazy">
+        <div class="shot-caption">Listening Recap</div>
+      </div>
+      <div class="shot-card">
+        <img src="../assets/img/app-modules2.webp" alt="Modular Extension Hub" loading="lazy">
+        <div class="shot-caption">Modular Extension Hub</div>
+      </div>
+      <div class="shot-card">
+        <img src="../assets/img/app-behaviour.webp" alt="Smart Data Saver" loading="lazy">
+        <div class="shot-caption">Smart Data Saver</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About this App -->
+  <section>
+    <h2 class="section-title" style="margin-bottom: 16px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--play-green);">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+      <span>About this app</span>
+    </h2>
+
+    <div class="features-grid">
+      <div class="feature-box">
+        <h4>🎤 Word-by-Word Lyrics</h4>
+        <p>Synced karaoke-style lyrics pulled from multiple global providers, perfectly synchronized with playback and video streams.</p>
+      </div>
+      <div class="feature-box">
+        <h4>🎛️ Audio Lab & Equalizer</h4>
+        <p>10-band precision equalizer, customizable sound profiles, bass boost, spatializer, and smooth crossfade between tracks.</p>
+      </div>
+      <div class="feature-box">
+        <h4>☁️ Instant Cloud Sync</h4>
+        <p>Real-time encrypted sync of your playlists, favorites, and history across all your devices powered by modern cloud infrastructure.</p>
+      </div>
+      <div class="feature-box">
+        <h4>💎 Liquid Glass Styling</h4>
+        <p>AMOLED dark mode, dynamic album-matching backdrop gradients, customizable player widgets, and modern Material 3 fluid physics.</p>
+      </div>
+      <div class="feature-box">
+        <h4>📶 Smart Data Saver</h4>
+        <p>Automatic stream quality adaptation when on cellular data, caching audio and album art locally to save bandwidth.</p>
+      </div>
+      <div class="feature-box">
+        <h4>🛡️ 100% Ad-Free & Private</h4>
+        <p>No audio ads, no tracking beacons, and no paywalls. Built for music lovers who appreciate clean, high-fidelity sound.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- What's New Box -->
+  <section class="whats-new-box">
+    <div class="whats-new-header">
+      <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #fff;">What's New</h3>
+      <span class="whats-new-ver dynamic-ver-name">v8.4.1</span>
+    </div>
+    <ul class="whats-new-list" id="whats-new-items">
+      <li>Official production release with optimized performance and reduced package size (38 MB).</li>
+      <li>Real-time Cloud Sync with multi-hop failover infrastructure.</li>
+      <li>Instant deep link sharing with automatic fallback redirection.</li>
+      <li>Battery and RAM footprint optimizations for Android 15 and 16.</li>
+    </ul>
+  </section>
+
+  <!-- Technical Specifications Table -->
+  <section>
+    <h2 class="section-title" style="margin-bottom: 16px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--play-gold);">
+        <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+        <rect x="9" y="9" width="6" height="6"></rect>
+        <line x1="9" y1="1" x2="9" y2="4"></line>
+        <line x1="15" y1="1" x2="15" y2="4"></line>
+        <line x1="9" y1="20" x2="9" y2="23"></line>
+        <line x1="15" y1="20" x2="15" y2="23"></line>
+        <line x1="20" y1="9" x2="23" y2="9"></line>
+        <line x1="20" y1="14" x2="23" y2="14"></line>
+        <line x1="1" y1="9" x2="4" y2="9"></line>
+        <line x1="1" y1="14" x2="4" y2="14"></line>
+      </svg>
+      <span>App Specifications & Integrity</span>
+    </h2>
+
+    <table class="specs-table">
+      <tbody>
+        <tr>
+          <td>Version</td>
+          <td><span class="dynamic-ver-name">8.4.1 build#1256</span> (versionCode 73)</td>
+        </tr>
+        <tr>
+          <td>Updated On</td>
+          <td>November 18, 2026</td>
+        </tr>
+        <tr>
+          <td>Requires Android</td>
+          <td>Android 7.0 (Nougat) and up</td>
+        </tr>
+        <tr>
+          <td>Package Name</td>
+          <td><code>com.music.melo</code></td>
+        </tr>
+        <tr>
+          <td>Architecture</td>
+          <td>Universal (arm64-v8a, armeabi-v7a, x86, x86_64)</td>
+        </tr>
+        <tr>
+          <td>Download Size</td>
+          <td class="dynamic-app-size">38.38 MB</td>
+        </tr>
+        <tr>
+          <td>SHA-256 Checksum</td>
+          <td>
+            <span id="spec-sha256" style="word-break: break-all; font-size: 11px;">FD62078FAE74B071F76F0DD6FFED5F03C225768EE46EE32E41507BA27C925A65</span>
+            <button type="button" class="sha-copy-btn" id="copy-sha-btn">Copy</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Ratings & Reviews Section -->
+  <section class="reviews-card">
+    <div class="rating-overview">
+      <div>
+        <div class="rating-big-num">4.9</div>
+        <div class="rating-stars">★★★★★</div>
+        <div class="rating-total">14,820 ratings</div>
+      </div>
+      <div class="rating-bars">
+        <div class="bar-row">
+          <span>5</span>
+          <div class="bar-track"><div class="bar-fill" style="width: 92%;"></div></div>
+        </div>
+        <div class="bar-row">
+          <span>4</span>
+          <div class="bar-track"><div class="bar-fill" style="width: 6%;"></div></div>
+        </div>
+        <div class="bar-row">
+          <span>3</span>
+          <div class="bar-track"><div class="bar-fill" style="width: 1%;"></div></div>
+        </div>
+        <div class="bar-row">
+          <span>2</span>
+          <div class="bar-track"><div class="bar-fill" style="width: 0.5%;"></div></div>
+        </div>
+        <div class="bar-row">
+          <span>1</span>
+          <div class="bar-track"><div class="bar-fill" style="width: 0.5%;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="reviews-grid">
+      <div class="review-item">
+        <div class="review-user-row">
+          <div class="review-avatar">A</div>
+          <div>
+            <div class="review-author">Ayaan K.</div>
+            <div class="review-date">Verified User &bull; 2 days ago</div>
+          </div>
+        </div>
+        <p class="review-text">&ldquo;The word-by-word lyrics with video playback is unreal. Equalizer presets actually make a huge difference on my IEMs. Best player on Android.&rdquo;</p>
+      </div>
+
+      <div class="review-item">
+        <div class="review-user-row">
+          <div class="review-avatar">S</div>
+          <div>
+            <div class="review-author">Sahil R.</div>
+            <div class="review-date">Verified User &bull; 1 week ago</div>
+          </div>
+        </div>
+        <p class="review-text">&ldquo;Liquid Glass player style looks stunning on AMOLED. Zero ads, lightweight, and cloud playlist sync worked seamlessly when I switched phones.&rdquo;</p>
+      </div>
+
+      <div class="review-item">
+        <div class="review-user-row">
+          <div class="review-avatar">Z</div>
+          <div>
+            <div class="review-author">Zoya M.</div>
+            <div class="review-date">Verified User &bull; 2 weeks ago</div>
+          </div>
+        </div>
+        <p class="review-text">&ldquo;The data saver mode actually saves gigabytes when traveling. Audio quality stays crisp. Hats off to the developers!&rdquo;</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Lightbox Modal for Screenshots -->
+<div class="lightbox-modal" id="lightbox-modal">
+  <button type="button" class="lightbox-close" id="lightbox-close" aria-label="Close image">&times;</button>
+  <img src="" alt="Screenshot Full View" class="lightbox-img" id="lightbox-img">
+</div>
+
+<script src="../assets/js/download-page.js?v=20261118b" defer></script>
+</body>
+</html>
