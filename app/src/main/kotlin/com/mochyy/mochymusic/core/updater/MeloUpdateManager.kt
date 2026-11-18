@@ -131,7 +131,7 @@ object MeloUpdateManager {
                                 val mandatoryFromRel = relObj.optBoolean("mandatory", false)
 
                                 val mandatory = isMandatoryFlag || mandatoryFromRel ||
-                                        (currentVersionCode > 0 && currentVersionCode < minSupported)
+                                        (minSupported > 1 && currentVersionCode > 0 && currentVersionCode < minSupported)
 
                                 val info = MeloReleaseInfo(
                                     versionCode = relVersionCode,

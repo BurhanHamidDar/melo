@@ -41,7 +41,7 @@
 
             if (id) {
                 var deepLink = "melo://" + type + "/" + id;
-                var intentLink = "intent://" + type + "/" + id + "#Intent;scheme=melo;package=com.music.melo;end";
+                var intentLink = "intent://" + type + "/" + id + "#Intent;scheme=melo;package=com.music.melo;S.browser_fallback_url=" + encodeURIComponent(window.location.href) + ";end";
                 var ytLink = type === 'playlist' ? ("https://music.youtube.com/playlist?list=" + id) : ("https://music.youtube.com/watch?v=" + id);
 
                 document.getElementById('playBtn').href = intentLink;
@@ -54,7 +54,7 @@
                 if (/Android/i.test(navigator.userAgent)) {
                     setTimeout(function() {
                         window.location.href = intentLink;
-                    }, 200);
+                    }, 300);
                 }
             }
         })();

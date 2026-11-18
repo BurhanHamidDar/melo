@@ -103,7 +103,7 @@ func (h *ReleaseHandler) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hasUpdate := release.VersionCode > clientVersionCode
-	isMandatory := (clientVersionCode > 0 && clientVersionCode < release.MinSupportedVersionCode) || release.Mandatory
+	isMandatory := release.Mandatory || (release.MinSupportedVersionCode > 1 && clientVersionCode > 0 && clientVersionCode < release.MinSupportedVersionCode)
 
 	if release.DownloadURL == "" {
 		release.DownloadURL = "/v1/releases/download?channel=" + release.Channel

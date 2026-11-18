@@ -669,7 +669,10 @@ export default function ReleasesPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => setMandatory(false)}
+              onClick={() => {
+                setMandatory(false);
+                setMinSupported('1');
+              }}
               className={`p-3.5 rounded-xl border text-left transition flex items-start gap-3 cursor-pointer ${
                 !mandatory
                   ? 'bg-blue-600/15 border-blue-500/50 text-white shadow-sm shadow-blue-500/10'
@@ -694,7 +697,10 @@ export default function ReleasesPage() {
 
             <button
               type="button"
-              onClick={() => setMandatory(true)}
+              onClick={() => {
+                setMandatory(true);
+                if (versionCode) setMinSupported(versionCode);
+              }}
               className={`p-3.5 rounded-xl border text-left transition flex items-start gap-3 cursor-pointer ${
                 mandatory
                   ? 'bg-rose-600/15 border-rose-500/50 text-white shadow-sm shadow-rose-500/10'

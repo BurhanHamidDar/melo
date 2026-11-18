@@ -499,16 +499,36 @@ func (h *AdminHandler) ToggleMandatoryRelease(w http.ResponseWriter, r *http.Req
 	}
 
 	if h.DB != nil && h.DB.Pool != nil {
-		query := `
-			UPDATE app_releases
-			SET mandatory = NOT mandatory, updated_at = NOW()
-			WHERE id = $1
-			RETURNING mandatory, version_name, version_code
-		`
-		var newMandatory bool
+		var currentMandatory bool
+		var vCode int64
+		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT mandatory, version_code FROM app_releases WHERE id = $1", releaseID).Scan(&currentMandatory, &vCode)
+
+		newMandatory := !currentMandatory
+		var query string
+		if newMandatory {
+			query = `
+				UPDATE app_releases
+				SET mandatory = true,
+				    min_supported_version_code = version_code,
+				    updated_at = NOW()
+				WHERE id = $1
+				RETURNING mandatory, version_name, version_code
+			`
+		} else {
+			query = `
+				UPDATE app_releases
+				SET mandatory = false,
+				    min_supported_version_code = 1,
+				    updated_at = NOW()
+				WHERE id = $1
+				RETURNING mandatory, version_name, version_code
+			`
+		}
+
+		var updatedMandatory bool
 		var versionName string
 		var versionCode int64
-		err := h.DB.Pool.QueryRow(r.Context(), query, releaseID).Scan(&newMandatory, &versionName, &versionCode)
+		err := h.DB.Pool.QueryRow(r.Context(), query, releaseID).Scan(&updatedMandatory, &versionName, &versionCode)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to toggle mandatory policy: "+err.Error())
 			return
@@ -519,7 +539,7 @@ func (h *AdminHandler) ToggleMandatoryRelease(w http.ResponseWriter, r *http.Req
 			actorID = &adminUser.ID
 		}
 		statusStr := "optional"
-		if newMandatory {
+		if updatedMandatory {
 			statusStr = "mandatory"
 		}
 		h.recordAuditLog(r.Context(), actorID, "toggle_mandatory", "app_releases", releaseID.String(),
@@ -527,7 +547,7 @@ func (h *AdminHandler) ToggleMandatoryRelease(w http.ResponseWriter, r *http.Req
 
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"success":   true,
-			"mandatory": newMandatory,
+			"mandatory": updatedMandatory,
 		})
 		return
 	}

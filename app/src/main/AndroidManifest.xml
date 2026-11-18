@@ -185,7 +185,7 @@
                 <data android:scheme="vnd.youtube.launch" />
             </intent-filter>
 
-            <!-- Melo App Links (HTTPS) -->
+            <!-- Melo Verified App Links (HTTPS - Verified via Firebase Hosting assetlinks.json) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
@@ -198,8 +198,6 @@
                 <data android:scheme="https" />
                 <data android:host="melo-v2.web.app" />
                 <data android:host="melo-v2.firebaseapp.com" />
-                <data android:host="melo.app" />
-                <data android:host="www.melo.app" />
                 <data android:pathPrefix="/track/" />
                 <data android:pathPrefix="/song/" />
                 <data android:pathPrefix="/playlist/" />
@@ -207,7 +205,7 @@
                 <data android:pathPrefix="/artist/" />
             </intent-filter>
 
-            <!-- Melo Custom URI Scheme (melo://) -->
+            <!-- Melo Standard Deep Links & Custom Schemes -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
@@ -217,6 +215,15 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data android:scheme="melo" />
+                <data android:scheme="https" android:host="melo-v2.web.app" />
+                <data android:scheme="https" android:host="melo-v2.firebaseapp.com" />
+                <data android:scheme="https" android:host="melo.app" />
+                <data android:scheme="https" android:host="www.melo.app" />
+                <data android:pathPrefix="/track/" />
+                <data android:pathPrefix="/song/" />
+                <data android:pathPrefix="/playlist/" />
+                <data android:pathPrefix="/album/" />
+                <data android:pathPrefix="/artist/" />
             </intent-filter>
 
             <!-- Share filter -->
