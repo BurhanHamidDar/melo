@@ -193,6 +193,14 @@ export async function unlockRelease(id: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to unlock release');
 }
 
+export async function toggleReleaseMandatory(id: string): Promise<{ success: boolean; mandatory: boolean }> {
+  const res = await fetchWithAuth(`/v1/admin/releases/${id}/toggle-mandatory`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to toggle release update policy');
+  return res.json();
+}
+
 export async function createRelease(release: Partial<AppRelease>): Promise<AppRelease> {
   const res = await fetchWithAuth('/v1/admin/releases', {
     method: 'POST',

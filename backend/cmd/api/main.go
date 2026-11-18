@@ -146,6 +146,7 @@ func main() {
 	mux.HandleFunc("POST /v1/admin/releases", authMiddleware.RequireAdmin("content_manager", adminH.CreateRelease))
 	mux.HandleFunc("POST /v1/admin/releases/upload", authMiddleware.RequireAdmin("content_manager", adminH.UploadReleaseAPK))
 	mux.HandleFunc("POST /v1/admin/releases/{id}/unlock", authMiddleware.RequireAdmin("content_manager", adminH.QuickUnlockRelease))
+	mux.HandleFunc("POST /v1/admin/releases/{id}/toggle-mandatory", authMiddleware.RequireAdmin("content_manager", adminH.ToggleMandatoryRelease))
 	mux.HandleFunc("GET /v1/admin/landing/content", authMiddleware.RequireAdmin("content_manager", adminH.GetLandingContent))
 	mux.HandleFunc("PUT /v1/admin/landing/content", authMiddleware.RequireAdmin("content_manager", adminH.UpdateLandingContent))
 	mux.HandleFunc("POST /v1/admin/notifications/send", authMiddleware.RequireAdmin("content_manager", adminH.SendPushNotification))

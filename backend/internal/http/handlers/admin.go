@@ -490,6 +490,51 @@ func (h *AdminHandler) QuickUnlockRelease(w http.ResponseWriter, r *http.Request
 	})
 }
 
+func (h *AdminHandler) ToggleMandatoryRelease(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	releaseID, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_ID", "Invalid release ID")
+		return
+	}
+
+	if h.DB != nil && h.DB.Pool != nil {
+		query := `
+			UPDATE app_releases
+			SET mandatory = NOT mandatory, updated_at = NOW()
+			WHERE id = $1
+			RETURNING mandatory, version_name, version_code
+		`
+		var newMandatory bool
+		var versionName string
+		var versionCode int64
+		err := h.DB.Pool.QueryRow(r.Context(), query, releaseID).Scan(&newMandatory, &versionName, &versionCode)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to toggle mandatory policy: "+err.Error())
+			return
+		}
+
+		var actorID *uuid.UUID
+		if adminUser := middleware.GetUserFromContext(r.Context()); adminUser != nil {
+			actorID = &adminUser.ID
+		}
+		statusStr := "optional"
+		if newMandatory {
+			statusStr = "mandatory"
+		}
+		h.recordAuditLog(r.Context(), actorID, "toggle_mandatory", "app_releases", releaseID.String(),
+			fmt.Sprintf("Toggled release %s (v%d) policy to %s", versionName, versionCode, statusStr), nil)
+
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"success":   true,
+			"mandatory": newMandatory,
+		})
+		return
+	}
+
+	writeError(w, http.StatusServiceUnavailable, "DB_UNAVAILABLE", "Database not connected")
+}
+
 func (h *AdminHandler) UploadReleaseAPK(w http.ResponseWriter, r *http.Request) {
 	// Support up to 250 MB APK uploads
 	if err := r.ParseMultipartForm(250 << 20); err != nil {
