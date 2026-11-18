@@ -215,14 +215,14 @@
 <p>ok so this is my favourite part of melo. a <b>module</b> adds something to the app without you waiting for me to ship an update. most of the time it's just a folder with a <code>manifest.json</code> in it (a small text file that says what you want), zipped up. melo reads it and builds everything with its own parts, so your thing looks and feels like it was always in the app.</p>
 <p>there are a few kinds, and one module can be any mix of them. tap one to jump to its page, each has a full example you can copy:</p>
 <div class="cards">
-  <a class="press" href="#modules-look"><b>🎨 A look</b><span>changes melo's own settings: player style, accent colour, cover corners, pure black, blur and more. one json file, nothing else.</span></a>
-  <a class="press" href="#modules-player"><b>📱 A player</b><span>a whole now playing screen of your own: blocks, panels, glass, pictures, svg shapes, keyframe animations, states that switch, a visualizer, shaders.</span></a>
-  <a class="press" href="#modules-glass"><b>🫧 A bar</b><span>your own agsl shader for the nav bar, the wide bar and the mini player. liquid glass is made this way.</span></a>
-  <a class="press" href="#modules-pages"><b>📄 Pages</b><span>pages of your own with a shader or picture behind them, frosted cards, touchable shader blocks, settings, songs and playlists. they can sit right in melo's settings.</span></a>
-  <a class="press" href="#modules-web"><b>🎵 Songs</b><span>a source melo plays from. you answer search and stream, melo plays it with every audio lab effect still on.</span></a>
-  <a class="press" href="#modules-lyrics"><b>💬 Lyrics</b><span>a lyrics provider: line by line, word by word, duets and background vocals.</span></a>
-  <a class="press" href="#modules-metadata"><b>ℹ️ Song info</b><span>a metadata provider: genre, release date, writers, producers, the label and what the song is about, shown in about song.</span></a>
-  <a class="press" href="#modules-js"><b>📜 Scripts</b><span>javascript for JS Modules: songs, lyrics or song info from a script, no server needed.</span></a>
+  <a class="press" href="#modules-look"><b>A look</b><span>changes melo's own settings: player style, accent colour, cover corners, pure black, blur and more. one json file, nothing else.</span></a>
+  <a class="press" href="#modules-player"><b>A player</b><span>a whole now playing screen of your own: blocks, panels, glass, pictures, svg shapes, keyframe animations, states that switch, a visualizer, shaders.</span></a>
+  <a class="press" href="#modules-glass"><b>A bar</b><span>your own agsl shader for the nav bar, the wide bar and the mini player. liquid glass is made this way.</span></a>
+  <a class="press" href="#modules-pages"><b>Pages</b><span>pages of your own with a shader or picture behind them, frosted cards, touchable shader blocks, settings, songs and playlists. they can sit right in melo's settings.</span></a>
+  <a class="press" href="#modules-web"><b>Songs</b><span>a source melo plays from. you answer search and stream, melo plays it with every audio lab effect still on.</span></a>
+  <a class="press" href="#modules-lyrics"><b>Lyrics</b><span>a lyrics provider: line by line, word by word, duets and background vocals.</span></a>
+  <a class="press" href="#modules-metadata"><b>Song info</b><span>a metadata provider: genre, release date, writers, producers, the label and what the song is about, shown in about song.</span></a>
+  <a class="press" href="#modules-js"><b>Scripts</b><span>javascript for JS Modules: songs, lyrics or song info from a script, no server needed.</span></a>
 </div>
 <p>every module can also have an <a href="#modules-art">icon and a banner</a>, <a href="#modules-settings">settings</a> people change on its page, and an <a href="#modules-install">update button</a> that shows up by itself when you publish a new version.</p>
 
@@ -582,8 +582,8 @@ echo "built build/neon-night.mochyymodule.zip"</code></pre>
 <p>attach your module's zip to a release and put <b><code>mochyymodule</code></b> in its file name. that's the only thing melo looks for, so other files in the release (source code, screenshots, apks) are left alone.</p>
 <div class="tbl"><table>
 <tr><th>file name</th><th>picked?</th></tr>
-<tr><td><code>vinyl-night.mochyymodule.zip</code></td><td>yes ✓</td></tr>
-<tr><td><code>liquid-glass-1.2.mochyymodule.zip</code></td><td>yes ✓</td></tr>
+<tr><td><code>vinyl-night.mochyymodule.zip</code></td><td>yes</td></tr>
+<tr><td><code>liquid-glass-1.2.mochyymodule.zip</code></td><td>yes</td></tr>
 <tr><td><code>vinyl-night.zip</code></td><td>no, it doesn't say mochyymodule</td></tr>
 <tr><td><code>vinyl.mochyymodule.tar.gz</code></td><td>no, it has to be a .zip</td></tr>
 </table></div>

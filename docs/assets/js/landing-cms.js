@@ -68,7 +68,7 @@
     }
 
     banner.innerHTML = `
-      <span>📢 ${content.alert_banner_text}</span>
+      <span>${content.alert_banner_text}</span>
       ${linkHtml}
     `;
   }
@@ -109,7 +109,7 @@
           <span>Upcoming Launch: v${release.version_name || '2.0.0'}</span>
         </div>
         <div class="melo-countdown-secure">
-          <span>🔒 Server-Gated</span>
+          <span>Server-Gated</span>
         </div>
       </div>
 
@@ -151,7 +151,7 @@
     const lockedBtn = card.querySelector('#melo-locked-trigger');
     if (lockedBtn) {
       lockedBtn.addEventListener('click', () => {
-        showToast('🔒 This release is scheduled. The server will reject download requests until the countdown finishes.');
+        showToast('This release is scheduled. The server will reject download requests until the countdown finishes.');
       });
     }
 
@@ -161,7 +161,7 @@
 
       if (diff <= 0) {
         clearInterval(countdownInterval);
-        showToast('🎉 Release is now live! Unlocking downloads...');
+        showToast('Release is now live. Unlocking downloads...');
         // Refresh status from server to receive the unlocked download URL
         setTimeout(initLandingCMS, 1000);
         return;
@@ -215,7 +215,7 @@
         <div class="melo-sha-bar">
           <span>SHA-256:</span>
           <span class="melo-sha-badge" id="melo-copy-sha" title="Click to copy SHA-256 fingerprint">
-            ${shortSha} 📋
+            ${shortSha}
           </span>
         </div>
       `
@@ -237,7 +237,7 @@
     if (shaBadge) {
       shaBadge.addEventListener('click', () => {
         navigator.clipboard.writeText(release.sha256).then(() => {
-          showToast('📋 Copied full SHA-256 checksum to clipboard!');
+          showToast('Copied full SHA-256 checksum to clipboard.');
         });
       });
     }

@@ -272,7 +272,7 @@ export default function LandingPageCMS() {
                   type="text"
                   value={alertBannerText}
                   onChange={(e) => setAlertBannerText(e.target.value)}
-                  placeholder="e.g. 🚀 Melo V2 with Cloud Sync is dropping soon!"
+                  placeholder="e.g. Melo V2 with Cloud Sync is dropping soon!"
                   className="w-full px-3.5 py-2.5 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>

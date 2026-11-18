@@ -101,7 +101,7 @@
     const lockedTrigger = document.getElementById('locked-btn-trigger');
     if (lockedTrigger) {
       lockedTrigger.addEventListener('click', () => {
-        showToast('🔒 This release is scheduled. The download button will unlock automatically when the timer reaches zero.');
+        showToast('This release is scheduled. The download button will unlock automatically when the timer reaches zero.');
       });
     }
 
@@ -177,7 +177,7 @@
     const dlBtn = document.getElementById('direct-dl-btn');
     if (dlBtn) {
       dlBtn.addEventListener('click', () => {
-        showToast('🚀 Downloading Melo Universal Release APK...');
+        showToast('Downloading Melo Universal Release APK...');
       });
     }
   }

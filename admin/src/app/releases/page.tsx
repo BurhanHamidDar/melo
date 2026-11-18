@@ -217,7 +217,7 @@ export default function ReleasesPage() {
         setFileSizeBytes(data.file_size_bytes);
 
         const sizeMB = (data.file_size_bytes / (1024 * 1024)).toFixed(1);
-        setUploadedFileNotice(`✓ Successfully uploaded ${data.filename} (${sizeMB} MB). Download URL & SHA-256 automatically assigned!`);
+        setUploadedFileNotice(`Successfully uploaded ${data.filename} (${sizeMB} MB). Download URL and SHA-256 automatically assigned.`);
 
         // Try to parse version info from filename (e.g. melo-v2.0.2.apk)
         const match = data.filename.match(/v?(\d+\.\d+(\.\d+)?)/i);
@@ -415,7 +415,7 @@ export default function ReleasesPage() {
                       : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
                   }`}
                 >
-                  {mandatory ? '🔴 Mandatory Update' : '🔵 Optional Update'}
+                  {mandatory ? 'Mandatory Update' : 'Optional Update'}
                 </span>
               )}
             </div>
@@ -560,7 +560,7 @@ export default function ReleasesPage() {
               />
             </div>
             <p className="text-[11px] text-violet-200/80 leading-relaxed">
-              🛡️ <b>Anti-Bypass Active:</b> The server withholds binary links and rejects downloads with HTTP 403 Forbidden until this exact moment in UTC.
+              <b>Anti-Bypass Protection:</b> The server withholds binary links and rejects downloads with HTTP 403 Forbidden until this exact moment in UTC.
             </p>
           </div>
         )}
@@ -628,7 +628,7 @@ export default function ReleasesPage() {
           <div>
             <label className="text-xs font-semibold text-slate-300 block mb-1.5 flex items-center justify-between">
               <span>Download URL / Server File Route (Auto-Populated)</span>
-              {downloadUrl && <span className="text-[10px] text-emerald-400 font-medium">✓ Ready</span>}
+              {downloadUrl && <span className="text-[10px] text-emerald-400 font-medium">Ready</span>}
             </label>
             <input
               type="text"
@@ -643,7 +643,7 @@ export default function ReleasesPage() {
           <div>
             <label className="text-xs font-semibold text-slate-300 block mb-1.5 flex items-center justify-between">
               <span>SHA-256 Checksum (Auto-Populated)</span>
-              {sha256 && <span className="text-[10px] text-emerald-400 font-medium">✓ Computed</span>}
+              {sha256 && <span className="text-[10px] text-emerald-400 font-medium">Computed</span>}
             </label>
             <input
               type="text"
