@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/melo-v2/backend/internal/config"
 	"github.com/melo-v2/backend/internal/database"
 	"github.com/melo-v2/backend/internal/models"
@@ -37,6 +39,7 @@ type LandingReleaseDTO struct {
 	FileSizeBytes int64  `json:"file_size_bytes"`
 	ReleaseNotes  string `json:"release_notes"`
 	Status        string `json:"status"`
+	DownloadCount int64  `json:"download_count"`
 }
 
 type LandingStatusResponse struct {
@@ -46,6 +49,7 @@ type LandingStatusResponse struct {
 	TimeRemainingSeconds int64                  `json:"time_remaining_seconds"`
 	Release              *LandingReleaseDTO     `json:"release,omitempty"`
 	LandingContent       *models.LandingContent `json:"landing_content,omitempty"`
+	TotalDownloads       int64                  `json:"total_downloads"`
 }
 
 func (h *ReleaseHandler) CheckUpdate(w http.ResponseWriter, r *http.Request) {
@@ -187,11 +191,16 @@ func (h *ReleaseHandler) LandingStatus(w http.ResponseWriter, r *http.Request) {
 	// 2. Fetch Primary or Latest Release
 	var release models.AppRelease
 	var releaseFound bool
+	var dlCount int64
+	var totalDlCount int64
 	if h.DB != nil && h.DB.Pool != nil {
+		_ = h.DB.Pool.QueryRow(r.Context(), "SELECT COALESCE(SUM(download_count), 0) FROM app_releases").Scan(&totalDlCount)
+
 		qRelease := `
 			SELECT id, platform, channel, version_code, version_name, package_name,
 			       COALESCE(download_url, ''), sha256, file_size_bytes, release_notes,
-			       status, is_landing_primary, scheduled_release_at, COALESCE(r2_object_key, '')
+			       status, is_landing_primary, scheduled_release_at, COALESCE(r2_object_key, ''),
+			       COALESCE(download_count, 0)
 			FROM app_releases
 			WHERE platform = 'android'
 			ORDER BY is_landing_primary DESC, version_code DESC, created_at DESC
@@ -202,6 +211,7 @@ func (h *ReleaseHandler) LandingStatus(w http.ResponseWriter, r *http.Request) {
 			&release.ID, &release.Platform, &release.Channel, &release.VersionCode, &release.VersionName,
 			&release.PackageName, &release.DownloadURL, &release.SHA256, &release.FileSizeBytes,
 			&release.ReleaseNotes, &release.Status, &release.IsLandingPrimary, &release.ScheduledReleaseAt, &r2Key,
+			&dlCount,
 		)
 		if err == nil {
 			release.R2ObjectKey = &r2Key
@@ -244,6 +254,7 @@ func (h *ReleaseHandler) LandingStatus(w http.ResponseWriter, r *http.Request) {
 		FileSizeBytes: release.FileSizeBytes,
 		ReleaseNotes:  release.ReleaseNotes,
 		Status:        release.Status,
+		DownloadCount: dlCount,
 	}
 
 	statusStr := "live"
@@ -262,6 +273,7 @@ func (h *ReleaseHandler) LandingStatus(w http.ResponseWriter, r *http.Request) {
 		TimeRemainingSeconds: remainingSeconds,
 		Release:              dto,
 		LandingContent:       &content,
+		TotalDownloads:       totalDlCount,
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -308,6 +320,16 @@ func (h *ReleaseHandler) DownloadRelease(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusForbidden, "RELEASE_LOCKED",
 			fmt.Sprintf("This release is scheduled for release at %s UTC and cannot be downloaded yet.", release.ScheduledReleaseAt.Format(time.RFC3339)))
 		return
+	}
+
+	// Increment download count asynchronously
+	if h.DB != nil && h.DB.Pool != nil {
+		go func(relID uuid.UUID) {
+			_, _ = h.DB.Pool.Exec(context.Background(),
+				"UPDATE app_releases SET download_count = download_count + 1 WHERE id = $1",
+				relID,
+			)
+		}(release.ID)
 	}
 
 	// If R2 storage is configured and key is present, issue presigned GET redirect

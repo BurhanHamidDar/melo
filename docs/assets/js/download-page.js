@@ -81,27 +81,27 @@
     const minsEl = document.getElementById('cd-mins');
     const secsEl = document.getElementById('cd-secs');
 
-    // Update locked CTA button
+    // Update locked CTA button with live countdown timer directly on the button
     ctaContainer.innerHTML = `
       <button type="button" class="btn-locked" id="locked-btn-trigger">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--play-gold);">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
         </svg>
-        <span>Download Locked (Launching Soon)</span>
+        <span>Unlocks in <span class="btn-countdown-val" id="btn-timer-val">00d 00h 00m 00s</span></span>
       </button>
       <a href="https://github.com/BurhanHamidDar/melo/releases" target="_blank" rel="noopener noreferrer" class="btn-secondary-gh">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/>
         </svg>
-        <span>GitHub Preview</span>
+        <span>GitHub Mirror</span>
       </a>
     `;
 
     const lockedTrigger = document.getElementById('locked-btn-trigger');
     if (lockedTrigger) {
       lockedTrigger.addEventListener('click', () => {
-        showToast('🔒 This release is scheduled. The backend server enforces strict anti-bypass until the timer expires.');
+        showToast('🔒 This release is scheduled. The download button will unlock automatically when the timer reaches zero.');
       });
     }
 
@@ -128,6 +128,11 @@
       if (hoursEl) hoursEl.textContent = String(h).padStart(2, '0');
       if (minsEl) minsEl.textContent = String(m).padStart(2, '0');
       if (secsEl) secsEl.textContent = String(s).padStart(2, '0');
+
+      const btnTimer = document.getElementById('btn-timer-val');
+      if (btnTimer) {
+        btnTimer.textContent = `${String(d).padStart(2, '0')}d ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+      }
     }
 
     tick();
@@ -177,13 +182,26 @@
     }
   }
 
-  function updateMetadata(release) {
+  function updateMetadata(release, rawData) {
     if (!release) return;
 
     if (release.version_name) {
       const verEls = document.querySelectorAll('.dynamic-ver-name');
       verEls.forEach((el) => { el.textContent = `v${release.version_name}`; });
     }
+
+    // Real download count
+    const totalDl = (rawData && rawData.total_downloads !== undefined)
+      ? rawData.total_downloads
+      : (release.download_count || 0);
+    const dlEls = document.querySelectorAll('.dynamic-downloads-val');
+    dlEls.forEach((el) => {
+      if (totalDl > 1000) {
+        el.textContent = `${(totalDl / 1000).toFixed(1)}K+`;
+      } else {
+        el.textContent = String(totalDl);
+      }
+    });
 
     if (release.sha256) {
       const shaEl = document.getElementById('spec-sha256');
@@ -285,10 +303,10 @@
 
     if (data && data.status === 'scheduled' && data.release && data.release.scheduled_release_at) {
       renderCountdown(data.release.scheduled_release_at, data.server_time, data.release);
-      updateMetadata(data.release);
+      updateMetadata(data.release, data);
     } else if (data && data.release) {
       renderLiveDownload(data.release);
-      updateMetadata(data.release);
+      updateMetadata(data.release, data);
     } else {
       // Offline fallback: show live v8.4.1 download
       renderLiveDownload({
@@ -296,7 +314,9 @@
         file_size_bytes: 38381180,
         sha256: 'FD62078FAE74B071F76F0DD6FFED5F03C225768EE46EE32E41507BA27C925A65',
         download_url: 'https://github.com/BurhanHamidDar/melo/releases',
+        download_count: 0,
       });
+      updateMetadata(null, { total_downloads: 0 });
     }
   }
 

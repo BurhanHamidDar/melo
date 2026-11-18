@@ -365,21 +365,31 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  background: #1e1e24;
-  color: var(--play-text-dim);
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(245, 226, 122, 0.12), rgba(255, 179, 64, 0.08));
+  color: #fff;
   font-weight: 700;
   font-size: 15px;
-  padding: 16px 32px;
+  padding: 16px 36px;
   border-radius: 999px;
-  cursor: not-allowed;
-  border: 1px solid var(--play-border);
-  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 1px solid rgba(245, 226, 122, 0.35);
+  transition: all 0.25s var(--spring);
+  box-shadow: 0 8px 24px -4px rgba(245, 226, 122, 0.2);
 }
 
 .btn-locked:hover {
-  background: #23232a;
-  color: #fff;
+  background: linear-gradient(135deg, rgba(245, 226, 122, 0.18), rgba(255, 179, 64, 0.14));
+  border-color: rgba(245, 226, 122, 0.55);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -4px rgba(245, 226, 122, 0.3);
+}
+
+.btn-countdown-val {
+  font-family: var(--mono);
+  font-weight: 800;
+  color: var(--play-gold);
+  letter-spacing: -0.01em;
 }
 
 .btn-secondary-gh {
