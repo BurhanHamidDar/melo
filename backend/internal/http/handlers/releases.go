@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -291,4 +293,22 @@ func (h *ReleaseHandler) DownloadRelease(w http.ResponseWriter, r *http.Request)
 	}
 
 	http.Redirect(w, r, "https://github.com/techxsarwar/melo/releases/latest", http.StatusTemporaryRedirect)
+}
+
+func (h *ReleaseHandler) ServeReleaseFile(w http.ResponseWriter, r *http.Request) {
+	filename := filepath.Base(r.PathValue("filename"))
+	if filename == "" || filename == "." {
+		http.NotFound(w, r)
+		return
+	}
+
+	filePath := filepath.Join("uploads", "releases", filename)
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/vnd.android.package-archive")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	http.ServeFile(w, r, filePath)
 }

@@ -2,26 +2,35 @@ package handlers
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/melo-v2/backend/internal/config"
 	"github.com/melo-v2/backend/internal/database"
 	"github.com/melo-v2/backend/internal/http/middleware"
 	"github.com/melo-v2/backend/internal/models"
 	"github.com/melo-v2/backend/internal/notifications"
+	"github.com/melo-v2/backend/internal/storage"
 )
 
 type AdminHandler struct {
-	DB  *database.DB
-	FCM *notifications.FCMService
+	DB      *database.DB
+	FCM     *notifications.FCMService
+	CFG     *config.Config
+	Storage storage.StorageClient
 }
 
-func NewAdminHandler(db *database.DB, fcm *notifications.FCMService) *AdminHandler {
-	return &AdminHandler{DB: db, FCM: fcm}
+func NewAdminHandler(db *database.DB, fcm *notifications.FCMService, cfg *config.Config, st storage.StorageClient) *AdminHandler {
+	return &AdminHandler{DB: db, FCM: fcm, CFG: cfg, Storage: st}
 }
 
 type ActivityDataPoint struct {
@@ -478,6 +487,83 @@ func (h *AdminHandler) QuickUnlockRelease(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"message": "Release unlocked and published immediately",
+	})
+}
+
+func (h *AdminHandler) UploadReleaseAPK(w http.ResponseWriter, r *http.Request) {
+	// Support up to 250 MB APK uploads
+	if err := r.ParseMultipartForm(250 << 20); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_FILE", "Failed to parse file or upload exceeded 250MB")
+		return
+	}
+
+	file, header, err := r.FormFile("apk")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "MISSING_FILE", "Form field 'apk' is required")
+		return
+	}
+	defer file.Close()
+
+	cleanName := filepath.Base(header.Filename)
+	if !strings.HasSuffix(strings.ToLower(cleanName), ".apk") {
+		cleanName += ".apk"
+	}
+
+	// Local storage directory
+	uploadDir := filepath.Join("uploads", "releases")
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		writeError(w, http.StatusInternalServerError, "FS_ERROR", "Failed to create upload directory")
+		return
+	}
+
+	destPath := filepath.Join(uploadDir, cleanName)
+	dst, err := os.Create(destPath)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "FS_ERROR", "Failed to create destination file: "+err.Error())
+		return
+	}
+	defer dst.Close()
+
+	hasher := sha256.New()
+	multiWriter := io.MultiWriter(dst, hasher)
+
+	bytesWritten, err := io.Copy(multiWriter, file)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "WRITE_ERROR", "Failed to write uploaded file: "+err.Error())
+		return
+	}
+
+	computedSHA := hex.EncodeToString(hasher.Sum(nil))
+	r2ObjectKey := "releases/" + cleanName
+
+	// If R2 storage is configured, sync to Cloudflare R2 bucket asynchronously
+	if h.Storage != nil && h.CFG != nil && h.CFG.R2ReleasesBucket != "" {
+		go func(path, key string) {
+			f, err := os.Open(path)
+			if err != nil {
+				return
+			}
+			defer f.Close()
+			_ = h.Storage.Upload(context.Background(), h.CFG.R2ReleasesBucket, key, "application/vnd.android.package-archive", f)
+		}(destPath, r2ObjectKey)
+	}
+
+	downloadURL := fmt.Sprintf("/v1/releases/files/%s", cleanName)
+
+	var actorID *uuid.UUID
+	if adminUser := middleware.GetUserFromContext(r.Context()); adminUser != nil {
+		actorID = &adminUser.ID
+	}
+	h.recordAuditLog(r.Context(), actorID, "upload_release_apk", "app_releases", cleanName,
+		fmt.Sprintf("Uploaded APK binary %s (%d bytes)", cleanName, bytesWritten), nil)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":         true,
+		"filename":        cleanName,
+		"file_size_bytes": bytesWritten,
+		"sha256":          computedSHA,
+		"download_url":    downloadURL,
+		"r2_object_key":   r2ObjectKey,
 	})
 }
 

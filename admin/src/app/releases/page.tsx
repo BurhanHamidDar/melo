@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { createRelease, getReleases, unlockRelease, AppRelease } from '@/lib/api';
+import React, { useState, useEffect, useRef } from 'react';
+import { createRelease, getReleases, unlockRelease, uploadReleaseAPK, AppRelease } from '@/lib/api';
 import {
   Smartphone,
   UploadCloud,
@@ -15,11 +15,20 @@ import {
   Radio,
   RefreshCw,
   Globe,
+  FileCheck,
+  Loader2,
+  FileCode,
 } from 'lucide-react';
 
 export default function ReleasesPage() {
   const [releases, setReleases] = useState<AppRelease[]>([]);
   const [loadingReleases, setLoadingReleases] = useState(true);
+
+  // APK Upload state
+  const [uploadingAPK, setUploadingAPK] = useState(false);
+  const [uploadedFileNotice, setUploadedFileNotice] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [channel, setChannel] = useState('stable');
   const [versionCode, setVersionCode] = useState('16');
@@ -28,12 +37,13 @@ export default function ReleasesPage() {
   const [downloadUrl, setDownloadUrl] = useState('');
   const [r2ObjectKey, setR2ObjectKey] = useState('');
   const [sha256, setSha256] = useState('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+  const [fileSizeBytes, setFileSizeBytes] = useState<number>(51389458);
   const [releaseNotes, setReleaseNotes] = useState('');
   const [mandatory, setMandatory] = useState(false);
   const [isLandingPrimary, setIsLandingPrimary] = useState(true);
 
   // Release Timing: 'immediate' | 'scheduled'
-  const [timingMode, setTimingMode] = useState<'immediate' | 'scheduled'>('scheduled');
+  const [timingMode, setTimingMode] = useState<'immediate' | 'scheduled'>('immediate');
   const [scheduledAt, setScheduledAt] = useState('');
 
   const [saving, setSaving] = useState(false);
@@ -89,6 +99,7 @@ export default function ReleasesPage() {
     setDownloadUrl(rel.download_url || '');
     setR2ObjectKey(rel.r2_object_key || '');
     setSha256(rel.sha256 || '');
+    setFileSizeBytes(rel.file_size_bytes || 51389458);
     setReleaseNotes(rel.release_notes || '');
     setMandatory(rel.mandatory || false);
     setIsLandingPrimary(rel.is_landing_primary ?? true);
@@ -96,7 +107,6 @@ export default function ReleasesPage() {
     if (rel.scheduled_release_at) {
       setTimingMode('scheduled');
       const d = new Date(rel.scheduled_release_at);
-      // Format as YYYY-MM-DDTHH:mm in local time for datetime-local
       const pad = (n: number) => String(n).padStart(2, '0');
       const localStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
       setScheduledAt(localStr);
@@ -106,10 +116,61 @@ export default function ReleasesPage() {
     }
   };
 
+  const handleFileProcess = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.apk')) {
+      setError('Please select a valid Android package file (.apk)');
+      return;
+    }
+
+    setUploadingAPK(true);
+    setError(null);
+    setUploadedFileNotice(null);
+
+    try {
+      const data = await uploadReleaseAPK(file);
+      if (data && data.success) {
+        setDownloadUrl(data.download_url);
+        setR2ObjectKey(data.r2_object_key);
+        setSha256(data.sha256);
+        setFileSizeBytes(data.file_size_bytes);
+
+        const sizeMB = (data.file_size_bytes / (1024 * 1024)).toFixed(1);
+        setUploadedFileNotice(`✓ Successfully uploaded ${data.filename} (${sizeMB} MB). Download URL & SHA-256 automatically assigned!`);
+
+        // Try to parse version info from filename (e.g. melo-v2.0.2.apk)
+        const match = data.filename.match(/v?(\d+\.\d+(\.\d+)?)/i);
+        if (match && match[1]) {
+          setVersionName(match[1]);
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload APK to server');
+    } finally {
+      setUploadingAPK(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileProcess(file);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileProcess(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!versionCode || !versionName || !sha256) {
       setError('Version Code, Version Name, and SHA-256 are mandatory.');
+      return;
+    }
+
+    if (!downloadUrl && !r2ObjectKey) {
+      setError('Please upload an APK file or specify a download URL.');
       return;
     }
 
@@ -130,10 +191,10 @@ export default function ReleasesPage() {
         version_code: parseInt(versionCode, 10),
         version_name: versionName,
         min_supported_version_code: parseInt(minSupported, 10) || 12,
-        download_url: downloadUrl || 'https://github.com/BurhanHamidDar/melo/releases/latest',
+        download_url: downloadUrl || `/v1/releases/download?channel=${channel}`,
         r2_object_key: r2ObjectKey ? r2ObjectKey.trim() : null,
         sha256,
-        file_size_bytes: 51389458,
+        file_size_bytes: fileSizeBytes,
         release_notes: releaseNotes || 'Melo V2 Release: Cloud Sync, synchronized lyrics, and unbypassable release system.',
         mandatory,
         status: 'published',
@@ -166,10 +227,10 @@ export default function ReleasesPage() {
         <div>
           <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
             <Smartphone className="w-5 h-5 text-indigo-400" />
-            <span>App Release Distribution & Countdown Scheduler</span>
+            <span>App Release Distribution & Direct APK Uploader</span>
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Manage live APK versions and schedule unbypassable countdown drops for the landing page
+            Upload new APK binaries directly and schedule unbypassable countdown drops or immediate rollouts
           </p>
         </div>
 
@@ -255,6 +316,64 @@ export default function ReleasesPage() {
         onSubmit={handleSubmit}
         className="p-6 bg-[#12131b] border border-white/[0.06] rounded-2xl space-y-6 shadow-sm"
       >
+        {/* Direct APK Upload Dropzone */}
+        <div>
+          <label className="text-xs font-semibold text-slate-200 block mb-2 flex items-center gap-1.5">
+            <UploadCloud className="w-4 h-4 text-indigo-400" />
+            <span>Direct APK Upload (Automatic URL & SHA-256 Calculation)</span>
+          </label>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".apk,application/vnd.android.package-archive"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragOver(true);
+            }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`p-6 border-2 border-dashed rounded-2xl text-center cursor-pointer transition-all ${
+              isDragOver
+                ? 'border-indigo-500 bg-indigo-500/10 scale-[1.01]'
+                : 'border-white/[0.12] hover:border-indigo-400/50 bg-[#171822]/70 hover:bg-[#171822]'
+            }`}
+          >
+            {uploadingAPK ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-4">
+                <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+                <p className="text-xs font-medium text-white">Uploading APK binary & calculating SHA-256 hash...</p>
+                <p className="text-[11px] text-slate-400">Please wait while the server processes the package.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 py-2">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-1">
+                  <FileCode className="w-6 h-6" />
+                </div>
+                <p className="text-xs font-bold text-white">
+                  Drop your Android <code className="text-indigo-300">.apk</code> file here, or <span className="text-indigo-400 underline">browse</span>
+                </p>
+                <p className="text-[11px] text-slate-400 max-w-md">
+                  Upload directly from your device. The server will automatically compute the file size, SHA-256 checksum, and assign the download route.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {uploadedFileNotice && (
+            <div className="mt-2.5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs flex items-center gap-2">
+              <FileCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <span className="font-medium">{uploadedFileNotice}</span>
+            </div>
+          )}
+        </div>
+
         {/* Release Mode Selector */}
         <div>
           <label className="text-xs font-semibold text-slate-200 block mb-2">
@@ -382,48 +501,37 @@ export default function ReleasesPage() {
           </div>
         </div>
 
-        {/* Binary Distribution Storage Options */}
+        {/* Assigned Download Route & SHA-256 (Automatically Filled) */}
         <div className="space-y-4 pt-1">
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1.5 flex items-center gap-1.5">
-              <Cloud className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Cloudflare R2 Object Key (Zero-Egress Storage)</span>
+            <label className="text-xs font-semibold text-slate-300 block mb-1.5 flex items-center justify-between">
+              <span>Download URL / Server File Route (Auto-Populated)</span>
+              {downloadUrl && <span className="text-[10px] text-emerald-400 font-medium">✓ Ready</span>}
             </label>
             <input
               type="text"
-              placeholder="e.g. releases/melo-v2.0.1.apk"
-              value={r2ObjectKey}
-              onChange={(e) => setR2ObjectKey(e.target.value)}
-              className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-              Direct / Fallback Download URL
-            </label>
-            <input
-              type="url"
-              placeholder="https://github.com/BurhanHamidDar/melo/releases/latest"
+              required
+              placeholder="Automatically populated upon APK upload or enter URL"
               value={downloadUrl}
               onChange={(e) => setDownloadUrl(e.target.value)}
               className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
             />
           </div>
-        </div>
 
-        <div>
-          <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-            SHA-256 Checksum
-          </label>
-          <input
-            type="text"
-            required
-            placeholder="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-            value={sha256}
-            onChange={(e) => setSha256(e.target.value)}
-            className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
-          />
+          <div>
+            <label className="text-xs font-semibold text-slate-300 block mb-1.5 flex items-center justify-between">
+              <span>SHA-256 Checksum (Auto-Populated)</span>
+              {sha256 && <span className="text-[10px] text-emerald-400 font-medium">✓ Computed</span>}
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Automatically computed upon APK upload"
+              value={sha256}
+              onChange={(e) => setSha256(e.target.value)}
+              className="w-full px-3.5 py-2 bg-[#171822] border border-white/[0.08] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+            />
+          </div>
         </div>
 
         <div>
@@ -471,7 +579,7 @@ export default function ReleasesPage() {
         <div className="pt-2">
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || uploadingAPK}
             className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium text-xs shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
           >
             <UploadCloud className="w-4 h-4" />

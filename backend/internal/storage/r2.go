@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 type StorageClient interface {
 	PresignPutURL(ctx context.Context, bucket, key, contentType string, ttl time.Duration) (string, error)
 	PresignGetURL(ctx context.Context, bucket, key string, ttl time.Duration) (string, error)
+	Upload(ctx context.Context, bucket, key, contentType string, body io.Reader) error
 }
 
 type R2Client struct {
@@ -90,4 +92,18 @@ func (r *R2Client) PresignGetURL(ctx context.Context, bucket, key string, ttl ti
 	}
 
 	return req.URL, nil
+}
+
+func (r *R2Client) Upload(ctx context.Context, bucket, key, contentType string, body io.Reader) error {
+	if r == nil || r.client == nil {
+		return fmt.Errorf("R2 client is not configured")
+	}
+
+	_, err := r.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(bucket),
+		Key:         aws.String(key),
+		ContentType: aws.String(contentType),
+		Body:        body,
+	})
+	return err
 }

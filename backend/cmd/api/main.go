@@ -71,7 +71,7 @@ func main() {
 	releaseH := handlers.NewReleaseHandler(db, cfg, r2Client)
 	announcementH := handlers.NewAnnouncementHandler(db)
 	uploadH := handlers.NewUploadHandler(db, cfg, r2Client)
-	adminH := handlers.NewAdminHandler(db, fcmService)
+	adminH := handlers.NewAdminHandler(db, fcmService, cfg, r2Client)
 	playlistH := handlers.NewPlaylistHandler(db)
 	communityH := handlers.NewCommunityHandler(db)
 	shareH := handlers.NewShareHandler(db)
@@ -94,6 +94,7 @@ func main() {
 	mux.HandleFunc("GET /api/v1/releases/latest", releaseH.CheckUpdate)
 	mux.HandleFunc("GET /v1/landing/status", releaseH.LandingStatus)
 	mux.HandleFunc("GET /v1/releases/download", releaseH.DownloadRelease)
+	mux.HandleFunc("GET /v1/releases/files/{filename}", releaseH.ServeReleaseFile)
 	mux.HandleFunc("GET /v1/announcements", announcementH.ListActive)
 	mux.HandleFunc("POST /v1/me/username/check", userH.CheckUsername)
 
@@ -143,6 +144,7 @@ func main() {
 	mux.HandleFunc("POST /v1/admin/announcements", authMiddleware.RequireAdmin("content_manager", adminH.CreateAnnouncement))
 	mux.HandleFunc("GET /v1/admin/releases", authMiddleware.RequireAdmin("content_manager", adminH.ListReleases))
 	mux.HandleFunc("POST /v1/admin/releases", authMiddleware.RequireAdmin("content_manager", adminH.CreateRelease))
+	mux.HandleFunc("POST /v1/admin/releases/upload", authMiddleware.RequireAdmin("content_manager", adminH.UploadReleaseAPK))
 	mux.HandleFunc("POST /v1/admin/releases/{id}/unlock", authMiddleware.RequireAdmin("content_manager", adminH.QuickUnlockRelease))
 	mux.HandleFunc("GET /v1/admin/landing/content", authMiddleware.RequireAdmin("content_manager", adminH.GetLandingContent))
 	mux.HandleFunc("PUT /v1/admin/landing/content", authMiddleware.RequireAdmin("content_manager", adminH.UpdateLandingContent))
@@ -157,9 +159,9 @@ func main() {
 	server := &http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      handler,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  5 * time.Minute,
+		WriteTimeout: 5 * time.Minute,
+		IdleTimeout:  5 * time.Minute,
 	}
 
 	// Server shutdown channel

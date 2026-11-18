@@ -150,6 +150,36 @@ export async function updateUserStatus(userId: string, status: string, reason: s
   if (!res.ok) throw new Error('Failed to update user status');
 }
 
+export interface UploadAPKResponse {
+  success: boolean;
+  filename: string;
+  file_size_bytes: number;
+  sha256: string;
+  download_url: string;
+  r2_object_key: string;
+}
+
+export async function uploadReleaseAPK(file: File): Promise<UploadAPKResponse> {
+  const token = typeof window !== 'undefined' ? (localStorage.getItem('melo_admin_token') || 'dev-admin-1') : 'dev-admin-1';
+  const formData = new FormData();
+  formData.append('apk', file);
+
+  const res = await fetch(`${API_BASE}/v1/admin/releases/upload`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Failed to upload APK');
+  }
+
+  return res.json();
+}
+
 export async function getReleases(): Promise<{ releases: AppRelease[] }> {
   const res = await fetchWithAuth('/v1/admin/releases');
   if (!res.ok) throw new Error('Failed to load releases');
