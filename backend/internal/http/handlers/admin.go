@@ -359,24 +359,155 @@ func (h *AdminHandler) CreateRelease(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.DB != nil && h.DB.Pool != nil {
+		// If marking this as landing primary, clear previous primary flags
+		if rel.IsLandingPrimary {
+			_, _ = h.DB.Pool.Exec(r.Context(), "UPDATE app_releases SET is_landing_primary = false WHERE platform = $1", rel.Platform)
+		}
+
 		query := `
 			INSERT INTO app_releases (id, platform, channel, version_code, version_name, min_supported_version_code,
 			                         package_name, download_url, sha256, signing_cert_sha256, file_size_bytes, release_notes,
-			                         rollout_percentage, status, mandatory)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+			                         rollout_percentage, status, mandatory, scheduled_release_at, r2_object_key, is_landing_primary)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 		`
 		_, err := h.DB.Pool.Exec(r.Context(), query, rel.ID, rel.Platform, rel.Channel, rel.VersionCode, rel.VersionName,
 			rel.MinSupportedVersionCode, rel.PackageName, rel.DownloadURL, rel.SHA256, rel.SigningCertSHA256,
-			rel.FileSizeBytes, rel.ReleaseNotes, rel.RolloutPercentage, rel.Status, rel.Mandatory)
+			rel.FileSizeBytes, rel.ReleaseNotes, rel.RolloutPercentage, rel.Status, rel.Mandatory,
+			rel.ScheduledReleaseAt, rel.R2ObjectKey, rel.IsLandingPrimary)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to save release: "+err.Error())
 			return
 		}
+
+		var actorID *uuid.UUID
+		if adminUser := middleware.GetUserFromContext(r.Context()); adminUser != nil {
+			actorID = &adminUser.ID
+		}
+		h.recordAuditLog(r.Context(), actorID, "create_release", "app_releases", rel.ID.String(),
+			fmt.Sprintf("Created release %s (v%d)", rel.VersionName, rel.VersionCode), nil)
 	}
 
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
 		"release": rel,
 	})
+}
+
+func (h *AdminHandler) GetLandingContent(w http.ResponseWriter, r *http.Request) {
+	var content models.LandingContent
+	if h.DB != nil && h.DB.Pool != nil {
+		query := `
+			SELECT id, is_active, hero_headline, hero_subtext, alert_banner_enabled,
+			       alert_banner_text, alert_banner_type, alert_banner_link, screenshots, created_at, updated_at
+			FROM landing_content
+			WHERE is_active = true
+			ORDER BY id ASC
+			LIMIT 1
+		`
+		err := h.DB.Pool.QueryRow(r.Context(), query).Scan(
+			&content.ID, &content.IsActive, &content.HeroHeadline, &content.HeroSubtext,
+			&content.AlertBannerEnabled, &content.AlertBannerText, &content.AlertBannerType,
+			&content.AlertBannerLink, &content.Screenshots, &content.CreatedAt, &content.UpdatedAt,
+		)
+		if err == nil {
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"content": content,
+			})
+			return
+		}
+	}
+
+	// Fallback
+	content = models.LandingContent{
+		ID:                 1,
+		IsActive:           true,
+		HeroHeadline:       "Music With style <3",
+		HeroSubtext:        "Free, forever. Clean playback, synced lyrics, modules, and cloud sync.",
+		AlertBannerEnabled: false,
+		AlertBannerType:    "info",
+		Screenshots:        json.RawMessage(`[]`),
+		CreatedAt:          time.Now().UTC(),
+		UpdatedAt:          time.Now().UTC(),
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"content": content,
+	})
+}
+
+func (h *AdminHandler) UpdateLandingContent(w http.ResponseWriter, r *http.Request) {
+	var req models.LandingContent
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "Failed to parse landing content")
+		return
+	}
+
+	if req.HeroHeadline == "" {
+		req.HeroHeadline = "Music With style <3"
+	}
+	if req.AlertBannerType == "" {
+		req.AlertBannerType = "info"
+	}
+	if len(req.Screenshots) == 0 {
+		req.Screenshots = json.RawMessage(`[]`)
+	}
+
+	if h.DB != nil && h.DB.Pool != nil {
+		query := `
+			INSERT INTO landing_content (id, is_active, hero_headline, hero_subtext, alert_banner_enabled,
+			                             alert_banner_text, alert_banner_type, alert_banner_link, screenshots, updated_at)
+			VALUES (1, true, $1, $2, $3, $4, $5, $6, $7, NOW())
+			ON CONFLICT (id) DO UPDATE SET
+				hero_headline = EXCLUDED.hero_headline,
+				hero_subtext = EXCLUDED.hero_subtext,
+				alert_banner_enabled = EXCLUDED.alert_banner_enabled,
+				alert_banner_text = EXCLUDED.alert_banner_text,
+				alert_banner_type = EXCLUDED.alert_banner_type,
+				alert_banner_link = EXCLUDED.alert_banner_link,
+				screenshots = EXCLUDED.screenshots,
+				updated_at = NOW()
+			RETURNING id, is_active, hero_headline, hero_subtext, alert_banner_enabled,
+			          alert_banner_text, alert_banner_type, alert_banner_link, screenshots, created_at, updated_at
+		`
+		err := h.DB.Pool.QueryRow(r.Context(), query,
+			req.HeroHeadline, req.HeroSubtext, req.AlertBannerEnabled,
+			req.AlertBannerText, req.AlertBannerType, req.AlertBannerLink, req.Screenshots,
+		).Scan(
+			&req.ID, &req.IsActive, &req.HeroHeadline, &req.HeroSubtext,
+			&req.AlertBannerEnabled, &req.AlertBannerText, &req.AlertBannerType,
+			&req.AlertBannerLink, &req.Screenshots, &req.CreatedAt, &req.UpdatedAt,
+		)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to update landing content: "+err.Error())
+			return
+		}
+
+		var actorID *uuid.UUID
+		if adminUser := middleware.GetUserFromContext(r.Context()); adminUser != nil {
+			actorID = &adminUser.ID
+		}
+		h.recordAuditLog(r.Context(), actorID, "update_landing_content", "landing_content", "1", "Updated landing page content and controls", nil)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"content": req,
+	})
+}
+
+func (h *AdminHandler) recordAuditLog(ctx context.Context, actorID *uuid.UUID, action, targetType, targetID, reason string, meta interface{}) {
+	if h.DB == nil || h.DB.Pool == nil {
+		return
+	}
+	var rawMeta []byte
+	if meta != nil {
+		rawMeta, _ = json.Marshal(meta)
+	} else {
+		rawMeta = []byte("{}")
+	}
+	query := `
+		INSERT INTO admin_audit_logs (actor_user_id, action, target_type, target_id, reason, metadata)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`
+	_, _ = h.DB.Pool.Exec(ctx, query, actorID, action, targetType, targetID, reason, rawMeta)
 }
 
 func (h *AdminHandler) ListAuditLogs(w http.ResponseWriter, r *http.Request) {

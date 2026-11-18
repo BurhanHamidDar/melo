@@ -13,6 +13,7 @@ import (
 
 type StorageClient interface {
 	PresignPutURL(ctx context.Context, bucket, key, contentType string, ttl time.Duration) (string, error)
+	PresignGetURL(ctx context.Context, bucket, key string, ttl time.Duration) (string, error)
 }
 
 type R2Client struct {
@@ -70,6 +71,22 @@ func (r *R2Client) PresignPutURL(ctx context.Context, bucket, key, contentType s
 	}, s3.WithPresignExpires(ttl))
 	if err != nil {
 		return "", fmt.Errorf("failed to generate presigned PUT url: %w", err)
+	}
+
+	return req.URL, nil
+}
+
+func (r *R2Client) PresignGetURL(ctx context.Context, bucket, key string, ttl time.Duration) (string, error) {
+	if r == nil || r.presignClient == nil {
+		return "", fmt.Errorf("R2 client is not configured")
+	}
+
+	req, err := r.presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}, s3.WithPresignExpires(ttl))
+	if err != nil {
+		return "", fmt.Errorf("failed to generate presigned GET url: %w", err)
 	}
 
 	return req.URL, nil

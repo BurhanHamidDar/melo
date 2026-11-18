@@ -1,19 +1,48 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/melo-v2/backend/internal/config"
 	"github.com/melo-v2/backend/internal/database"
 	"github.com/melo-v2/backend/internal/models"
+	"github.com/melo-v2/backend/internal/storage"
 )
 
 type ReleaseHandler struct {
-	DB *database.DB
+	DB  *database.DB
+	CFG *config.Config
+	R2  storage.StorageClient
 }
 
-func NewReleaseHandler(db *database.DB) *ReleaseHandler {
-	return &ReleaseHandler{DB: db}
+func NewReleaseHandler(db *database.DB, cfg *config.Config, r2 storage.StorageClient) *ReleaseHandler {
+	return &ReleaseHandler{DB: db, CFG: cfg, R2: r2}
+}
+
+type LandingReleaseDTO struct {
+	Platform      string `json:"platform"`
+	Channel       string `json:"channel"`
+	VersionCode   int64  `json:"version_code"`
+	VersionName   string `json:"version_name"`
+	PackageName   string `json:"package_name"`
+	DownloadURL   string `json:"download_url,omitempty"` // Strictly omitted if status == "scheduled"
+	SHA256        string `json:"sha256"`
+	FileSizeBytes int64  `json:"file_size_bytes"`
+	ReleaseNotes  string `json:"release_notes"`
+	Status        string `json:"status"`
+}
+
+type LandingStatusResponse struct {
+	Status               string                 `json:"status"` // "scheduled" or "live"
+	ServerTime           time.Time              `json:"server_time"`
+	ScheduledReleaseAt   *time.Time             `json:"scheduled_release_at,omitempty"`
+	TimeRemainingSeconds int64                  `json:"time_remaining_seconds"`
+	Release              *LandingReleaseDTO     `json:"release,omitempty"`
+	LandingContent       *models.LandingContent `json:"landing_content,omitempty"`
 }
 
 func (h *ReleaseHandler) CheckUpdate(w http.ResponseWriter, r *http.Request) {
@@ -34,6 +63,7 @@ func (h *ReleaseHandler) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 			       file_size_bytes, release_notes, rollout_percentage, status, mandatory, published_at, created_at, updated_at
 			FROM app_releases
 			WHERE platform = 'android' AND channel = $1 AND status = 'published'
+			  AND (scheduled_release_at IS NULL OR scheduled_release_at <= NOW())
 			ORDER BY version_code DESC
 			LIMIT 1
 		`
@@ -58,7 +88,7 @@ func (h *ReleaseHandler) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 			VersionName:             "2.0.0-rc1",
 			MinSupportedVersionCode: 12,
 			PackageName:             "com.music.melo",
-			DownloadURL:             "https://github.com/techxsarwar/melo/releases/latest",
+			DownloadURL:             "/v1/releases/download?channel=" + channel,
 			SHA256:                  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 			SigningCertSHA256:       "",
 			FileSizeBytes:           51389458,
@@ -77,4 +107,188 @@ func (h *ReleaseHandler) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 		"is_mandatory": isMandatory,
 		"release":      release,
 	})
+}
+
+// LandingStatus provides public data for the landing page hero and release countdown
+func (h *ReleaseHandler) LandingStatus(w http.ResponseWriter, r *http.Request) {
+	now := time.Now().UTC()
+
+	// 1. Fetch Landing Page Content
+	var content models.LandingContent
+	var contentFound bool
+	if h.DB != nil && h.DB.Pool != nil {
+		qContent := `
+			SELECT id, is_active, hero_headline, hero_subtext, alert_banner_enabled,
+			       alert_banner_text, alert_banner_type, alert_banner_link, screenshots, created_at, updated_at
+			FROM landing_content
+			WHERE is_active = true
+			ORDER BY id ASC
+			LIMIT 1
+		`
+		err := h.DB.Pool.QueryRow(r.Context(), qContent).Scan(
+			&content.ID, &content.IsActive, &content.HeroHeadline, &content.HeroSubtext,
+			&content.AlertBannerEnabled, &content.AlertBannerText, &content.AlertBannerType,
+			&content.AlertBannerLink, &content.Screenshots, &content.CreatedAt, &content.UpdatedAt,
+		)
+		if err == nil {
+			contentFound = true
+		}
+	}
+
+	if !contentFound {
+		content = models.LandingContent{
+			ID:                 1,
+			IsActive:           true,
+			HeroHeadline:       "Music With style <3",
+			HeroSubtext:        "Free, forever. Clean playback, synced lyrics, modules, and cloud sync.",
+			AlertBannerEnabled: false,
+			AlertBannerType:    "info",
+			Screenshots:        json.RawMessage(`[]`),
+			CreatedAt:          now,
+			UpdatedAt:          now,
+		}
+	}
+
+	// 2. Fetch Primary or Latest Release
+	var release models.AppRelease
+	var releaseFound bool
+	if h.DB != nil && h.DB.Pool != nil {
+		qRelease := `
+			SELECT id, platform, channel, version_code, version_name, package_name,
+			       COALESCE(download_url, ''), sha256, file_size_bytes, release_notes,
+			       status, is_landing_primary, scheduled_release_at, COALESCE(r2_object_key, '')
+			FROM app_releases
+			WHERE platform = 'android'
+			ORDER BY is_landing_primary DESC, created_at DESC
+			LIMIT 1
+		`
+		var r2Key string
+		err := h.DB.Pool.QueryRow(r.Context(), qRelease).Scan(
+			&release.ID, &release.Platform, &release.Channel, &release.VersionCode, &release.VersionName,
+			&release.PackageName, &release.DownloadURL, &release.SHA256, &release.FileSizeBytes,
+			&release.ReleaseNotes, &release.Status, &release.IsLandingPrimary, &release.ScheduledReleaseAt, &r2Key,
+		)
+		if err == nil {
+			release.R2ObjectKey = &r2Key
+			releaseFound = true
+		}
+	}
+
+	if !releaseFound {
+		release = models.AppRelease{
+			Platform:          "android",
+			Channel:           "stable",
+			VersionCode:       13,
+			VersionName:       "2.0.0-rc1",
+			PackageName:       "com.music.melo",
+			DownloadURL:       "/v1/releases/download?channel=stable",
+			SHA256:            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			FileSizeBytes:     51389458,
+			ReleaseNotes:      "Melo V2 Release: User accounts, cloud sync, and improved performance.",
+			Status:            "published",
+			IsLandingPrimary:  true,
+		}
+	}
+
+	// Determine if the release is scheduled in the future
+	isScheduled := false
+	var remainingSeconds int64 = 0
+
+	if release.ScheduledReleaseAt != nil && now.Before(*release.ScheduledReleaseAt) {
+		isScheduled = true
+		remainingSeconds = int64(release.ScheduledReleaseAt.Sub(now).Seconds())
+	}
+
+	dto := &LandingReleaseDTO{
+		Platform:      release.Platform,
+		Channel:       release.Channel,
+		VersionCode:   release.VersionCode,
+		VersionName:   release.VersionName,
+		PackageName:   release.PackageName,
+		SHA256:        release.SHA256,
+		FileSizeBytes: release.FileSizeBytes,
+		ReleaseNotes:  release.ReleaseNotes,
+		Status:        release.Status,
+	}
+
+	statusStr := "live"
+	if isScheduled {
+		statusStr = "scheduled"
+		// ANTI-BYPASS SECURITY GUARANTEE: Never leak download URL or R2 object key when locked!
+		dto.DownloadURL = ""
+	} else {
+		dto.DownloadURL = "/v1/releases/download?channel=" + release.Channel
+	}
+
+	resp := LandingStatusResponse{
+		Status:               statusStr,
+		ServerTime:           now,
+		ScheduledReleaseAt:   release.ScheduledReleaseAt,
+		TimeRemainingSeconds: remainingSeconds,
+		Release:              dto,
+		LandingContent:       &content,
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// DownloadRelease gates binary access strictly against the release schedule
+func (h *ReleaseHandler) DownloadRelease(w http.ResponseWriter, r *http.Request) {
+	channel := r.URL.Query().Get("channel")
+	if channel != "beta" {
+		channel = "stable"
+	}
+
+	var release models.AppRelease
+	var found bool
+
+	if h.DB != nil && h.DB.Pool != nil {
+		query := `
+			SELECT id, platform, channel, version_code, version_name,
+			       COALESCE(download_url, ''), sha256, scheduled_release_at, COALESCE(r2_object_key, ''), is_landing_primary
+			FROM app_releases
+			WHERE platform = 'android' AND (channel = $1 OR is_landing_primary = true)
+			ORDER BY is_landing_primary DESC, version_code DESC
+			LIMIT 1
+		`
+		var r2Key string
+		err := h.DB.Pool.QueryRow(r.Context(), query, channel).Scan(
+			&release.ID, &release.Platform, &release.Channel, &release.VersionCode, &release.VersionName,
+			&release.DownloadURL, &release.SHA256, &release.ScheduledReleaseAt, &r2Key, &release.IsLandingPrimary,
+		)
+		if err == nil {
+			release.R2ObjectKey = &r2Key
+			found = true
+		}
+	}
+
+	if !found {
+		http.Redirect(w, r, "https://github.com/techxsarwar/melo/releases/latest", http.StatusTemporaryRedirect)
+		return
+	}
+
+	// SERVER-SIDE ANTI-BYPASS ENFORCEMENT
+	now := time.Now().UTC()
+	if release.ScheduledReleaseAt != nil && now.Before(*release.ScheduledReleaseAt) {
+		writeError(w, http.StatusForbidden, "RELEASE_LOCKED",
+			fmt.Sprintf("This release is scheduled for release at %s UTC and cannot be downloaded yet.", release.ScheduledReleaseAt.Format(time.RFC3339)))
+		return
+	}
+
+	// If R2 storage is configured and key is present, issue presigned GET redirect
+	if release.R2ObjectKey != nil && *release.R2ObjectKey != "" && h.R2 != nil && h.CFG != nil && h.CFG.R2ReleasesBucket != "" {
+		presignedURL, err := h.R2.PresignGetURL(r.Context(), h.CFG.R2ReleasesBucket, *release.R2ObjectKey, 15*time.Minute)
+		if err == nil && presignedURL != "" {
+			http.Redirect(w, r, presignedURL, http.StatusTemporaryRedirect)
+			return
+		}
+	}
+
+	// If direct download URL is configured, redirect
+	if release.DownloadURL != "" {
+		http.Redirect(w, r, release.DownloadURL, http.StatusTemporaryRedirect)
+		return
+	}
+
+	http.Redirect(w, r, "https://github.com/techxsarwar/melo/releases/latest", http.StatusTemporaryRedirect)
 }

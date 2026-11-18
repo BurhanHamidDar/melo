@@ -68,7 +68,7 @@ func main() {
 	healthH := handlers.NewHealthHandler(db)
 	userH := handlers.NewUserHandler(db)
 	syncH := handlers.NewSyncHandler(db)
-	releaseH := handlers.NewReleaseHandler(db)
+	releaseH := handlers.NewReleaseHandler(db, cfg, r2Client)
 	announcementH := handlers.NewAnnouncementHandler(db)
 	uploadH := handlers.NewUploadHandler(db, cfg, r2Client)
 	adminH := handlers.NewAdminHandler(db, fcmService)
@@ -92,6 +92,8 @@ func main() {
 	mux.HandleFunc("GET /v1/app/update", releaseH.CheckUpdate)
 	mux.HandleFunc("GET /v1/releases/latest", releaseH.CheckUpdate)
 	mux.HandleFunc("GET /api/v1/releases/latest", releaseH.CheckUpdate)
+	mux.HandleFunc("GET /v1/landing/status", releaseH.LandingStatus)
+	mux.HandleFunc("GET /v1/releases/download", releaseH.DownloadRelease)
 	mux.HandleFunc("GET /v1/announcements", announcementH.ListActive)
 	mux.HandleFunc("POST /v1/me/username/check", userH.CheckUsername)
 
@@ -140,6 +142,8 @@ func main() {
 	mux.HandleFunc("PATCH /v1/admin/reports/{id}", authMiddleware.RequireAdmin("moderator", communityH.UpdateReport))
 	mux.HandleFunc("POST /v1/admin/announcements", authMiddleware.RequireAdmin("content_manager", adminH.CreateAnnouncement))
 	mux.HandleFunc("POST /v1/admin/releases", authMiddleware.RequireAdmin("content_manager", adminH.CreateRelease))
+	mux.HandleFunc("GET /v1/admin/landing/content", authMiddleware.RequireAdmin("content_manager", adminH.GetLandingContent))
+	mux.HandleFunc("PUT /v1/admin/landing/content", authMiddleware.RequireAdmin("content_manager", adminH.UpdateLandingContent))
 	mux.HandleFunc("POST /v1/admin/notifications/send", authMiddleware.RequireAdmin("content_manager", adminH.SendPushNotification))
 	mux.HandleFunc("GET /v1/admin/audit-logs", authMiddleware.RequireAdmin("super_admin", adminH.ListAuditLogs))
 

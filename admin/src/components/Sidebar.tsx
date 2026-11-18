@@ -16,12 +16,14 @@ import {
   Layers,
   Activity,
   ChevronRight,
+  Globe,
 } from 'lucide-react';
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Users & Sync', href: '/users', icon: Users },
   { name: 'App Releases', href: '/releases', icon: Smartphone },
+  { name: 'Landing Page CMS', href: '/landing', icon: Globe },
   { name: 'Announcements', href: '/announcements', icon: Megaphone },
   { name: 'Moderation Reports', href: '/reports', icon: Flag },
   { name: 'Audit Logs', href: '/audit-logs', icon: ShieldCheck },

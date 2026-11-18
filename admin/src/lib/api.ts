@@ -69,6 +69,29 @@ export interface AppRelease {
   status: string;
   mandatory: boolean;
   published_at: string | null;
+  scheduled_release_at?: string | null;
+  r2_object_key?: string | null;
+  is_landing_primary?: boolean;
+}
+
+export interface LandingScreenshot {
+  url: string;
+  order: number;
+  caption?: string;
+}
+
+export interface LandingContent {
+  id: number;
+  is_active: boolean;
+  hero_headline: string;
+  hero_subtext: string;
+  alert_banner_enabled: boolean;
+  alert_banner_text: string | null;
+  alert_banner_type: 'info' | 'emerald' | 'amber' | 'rose';
+  alert_banner_link: string | null;
+  screenshots: LandingScreenshot[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Announcement {
@@ -161,5 +184,20 @@ export async function sendPushNotification(payload: { title: string; body: strin
 export async function getAuditLogs(): Promise<{ audit_logs: AuditLog[] }> {
   const res = await fetchWithAuth('/v1/admin/audit-logs');
   if (!res.ok) throw new Error('Failed to load audit logs');
+  return res.json();
+}
+
+export async function getLandingContent(): Promise<{ content: LandingContent }> {
+  const res = await fetchWithAuth('/v1/admin/landing/content');
+  if (!res.ok) throw new Error('Failed to load landing content');
+  return res.json();
+}
+
+export async function updateLandingContent(content: Partial<LandingContent>): Promise<{ success: boolean; content: LandingContent }> {
+  const res = await fetchWithAuth('/v1/admin/landing/content', {
+    method: 'PUT',
+    body: JSON.stringify(content),
+  });
+  if (!res.ok) throw new Error('Failed to update landing content');
   return res.json();
 }

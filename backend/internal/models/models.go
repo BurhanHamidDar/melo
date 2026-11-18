@@ -175,8 +175,25 @@ type AppRelease struct {
 	Status                 string     `json:"status"` // draft, testing, published, paused, withdrawn
 	Mandatory              bool       `json:"mandatory"`
 	PublishedAt            *time.Time `json:"published_at,omitempty"`
+	ScheduledReleaseAt     *time.Time `json:"scheduled_release_at,omitempty"`
+	R2ObjectKey            *string    `json:"r2_object_key,omitempty"`
+	IsLandingPrimary       bool       `json:"is_landing_primary"`
 	CreatedAt              time.Time  `json:"created_at"`
 	UpdatedAt              time.Time  `json:"updated_at"`
+}
+
+type LandingContent struct {
+	ID                 int             `json:"id"`
+	IsActive           bool            `json:"is_active"`
+	HeroHeadline       string          `json:"hero_headline"`
+	HeroSubtext        string          `json:"hero_subtext"`
+	AlertBannerEnabled bool            `json:"alert_banner_enabled"`
+	AlertBannerText    *string         `json:"alert_banner_text,omitempty"`
+	AlertBannerType    string          `json:"alert_banner_type"`
+	AlertBannerLink    *string         `json:"alert_banner_link,omitempty"`
+	Screenshots        json.RawMessage `json:"screenshots"`
+	CreatedAt          time.Time       `json:"created_at"`
+	UpdatedAt          time.Time       `json:"updated_at"`
 }
 
 type FeatureFlag struct {
